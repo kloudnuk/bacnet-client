@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "bacnet-client"
+version = "0.1.0"
+description = ""
+authors = ["viteski <vsmolinski@vitek.dev>"]
+readme = "README.md"
+packages = [{include = "bacnet_client", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+bacpypes3 = "^0.0.69"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
