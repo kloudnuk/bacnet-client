@@ -2,16 +2,33 @@
 
 [[package]]
 name = "bacpypes3"
-version = "0.0.69"
+version = "0.0.71"
 description = "BACnet Communications Library"
 category = "main"
 optional = false
 python-versions = "*"
+files = []
+develop = true
+
+[package.source]
+type = "git"
+url = "https://github.com/viteski/BACpypes3.git"
+reference = "HEAD"
+resolved_reference = "a74997ec914219f9d0491caa9471b35f67dafab1"
+
+[[package]]
+name = "ifaddr"
+version = "0.2.0"
+description = "Cross-platform network interface and IP address enumeration library"
+category = "main"
+optional = false
+python-versions = "*"
 files = [
-    {file = "bacpypes3-0.0.69-py3-none-any.whl", hash = "sha256:0f2d55aae438a5a79572294aa2113fa171089e9c0df9535506c0b7b95f9e5464"},
+    {file = "ifaddr-0.2.0-py3-none-any.whl", hash = "sha256:085e0305cfe6f16ab12d72e2024030f5d52674afad6911bb1eee207177b8a748"},
+    {file = "ifaddr-0.2.0.tar.gz", hash = "sha256:cc0cbfcaabf765d44595825fb96a99bb12c79716b73b44330ea38ee2b0c4aed4"},
 ]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "d54cc7ab114d701bd4ed811a76ee2985962fe8b8395da9c31d82e88890b5e7cd"
+content-hash = "4ae387738838a4147a9a4fe677ed3a64c474420759855f318b81f352c00d5dd0"

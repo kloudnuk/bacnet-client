@@ -8,7 +8,8 @@ packages = [{include = "bacnet_client", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-bacpypes3 = "^0.0.69"
+bacpypes3 = {git = "https://github.com/viteski/BACpypes3.git", develop = true}
+ifaddr = "^0.2.0"
 
 
 [build-system]

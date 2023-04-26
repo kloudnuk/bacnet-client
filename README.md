@@ -12,7 +12,9 @@ The BACnet Client module uses Joel Bender's Bacpypes3 python package as its BACn
 
 ## Device Discovery
 ### Service Layer
-Use the bacpypes3 who-is native service interface to discover bacnet devices in an Async tasks that run on an infinite loop. Design a set of DTOs (Data Transfer Objects) to capture the device information schema. Send any new device data to the in-memory database to cache it. Develop a CRUD interface for the selected in-memory database.
+Use the bacpypes3 who-is native service interface to discover bacnet devices in an Async tasks that run on an infinite loop. Design a set of DTOs (Data Transfer Objects) to capture the device information schema. Send any new device data to the in-memory database to cache it. Develop a CRUD interface for the selected in-memory database.<br>
+> Will need manage the environment's firewall in order to fully control bacnet ip port management from the application side. (for example on Ubuntu 22.04)<br>
+`sudo ufw allow from any to any port 47808 proto udp`
 
 ### Data Association Layer
 Develop Object Association Dictionaries between the different entity types the service deals with (Devices-to-points, device-to-firmware, etc.). Cache the association entries in an in-memory database and push periodically to a long term database.
