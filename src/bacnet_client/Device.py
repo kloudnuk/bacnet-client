@@ -7,6 +7,7 @@ import json
 import configparser
 from bacpypes3.local.device import DeviceObject
 from bacpypes3.pdu import IPv4Address
+# from bacpypes3.basetypes import ObjectIdentifier
 
 
 class BacnetDeviceDto(object):
@@ -18,10 +19,12 @@ class BacnetDeviceDto(object):
 class BacnetDevice():
     def __init__(
             self, id, addr: str, props: dict) -> None:
-        self.deviceId = id
+        self.Id = id
         self.address: str = addr
-        self.properties: dict = props
-        self.obj: dict = {"id": str(self.deviceId),
+        self.properties: dict = {p:
+                                 self.normalize(str(p),
+                                                props[p]) for p in props}
+        self.obj: dict = {"id": str(self.Id),
                           "address": self.address,
                           "properties": self.properties}
 
@@ -39,6 +42,74 @@ class BacnetDevice():
 
     def toDto(self):
         return BacnetDeviceDto(self.obj)
+
+    def normalize(self, property, value):
+        try:
+            normalized: dict = {"value": "",
+                                "type": str(type(value))}
+            if property == "restart-notification-recipients":
+                try:
+                    normalized["value"] = \
+                        [{"device": str(v.device),
+                          "address": str(v.address.macAddress)} for v in value]
+                    return normalized
+                except Exception as e:
+                    print(e)
+            elif property == "time-of-device-restart":
+                normalized["value"] = str(
+                    f"{value.dateTime.date} {value.dateTime.time}")
+                return normalized
+            elif property == "object-list":
+                normalized["value"] = [str(v) for v in value]
+                return normalized
+            elif property == "utc-time-synchronization-recipients":
+                try:
+                    normalized["value"] = \
+                        [{"device": str(v.device),
+                          "address": str(v.address.macAddress)} for v in value]
+                    return normalized
+                except Exception as e:
+                    print(e)
+            elif property == "protocol-object-types-supported":
+                normalized["value"] = str(value).split(";")
+                return normalized
+            elif property == "protocol-services-supported":
+                normalized["value"] == str(value).split(";")
+                return normalized
+            elif property == "time-synchronization-recipients":
+                try:
+                    normalized["value"] = \
+                        [{"device": str(v.device),
+                          "address": str(v.address.macAddress)} for v in value]
+                    return normalized
+                except Exception as e:
+                    print(e)
+            elif property == "align-intervals":
+                normalized["value"] == "True" if 1 else "False"
+                return normalized
+            elif property == "daylight-savings-status":
+                normalized["value"] == "True" if 1 else "False"
+                return normalized
+            elif property == "last-restore-time":
+                normalized["value"] = str(
+                    f"{value.dateTime.date} {value.dateTime.time}")
+                return normalized
+            elif property == "active-cov-subscriptions":
+                try:
+                    normalized["value"] = \
+                        [{"device": str(v.recipient.device),
+                          "address": str(v.recipient.address.macAddress),
+                          "timeRemaining": str(v.timeRemaining),
+                          "covIncrement": str(v.covIncrement)} for v in value]
+                    return normalized
+                except Exception as e:
+                    print(e)
+            else:
+                normalized["value"] = str(value)
+                return normalized
+        except Exception as e:
+            print(f"ERROR: {e}")
+            return ""
 
 
 class LocalBacnetDevice:

@@ -24,7 +24,6 @@ async def main():
     iamDict = {iam.iAmDeviceIdentifier: iam.pduSource for iam in iams}
 
     for id in iamDict:
-        print("\n", id, iamDict[id], "\n")
         try:
             # Get device information
             propList = await app.read_property(
@@ -39,7 +38,10 @@ async def main():
             pass
 
     for dev in devices:
-        print(dev)
+        print(f"{dev.Id}: {dev.address}")
+        for prop in dev.properties:
+            print(f"{prop}: {dev.properties[prop]}")
+        print("\n")
 
 
 if __name__ == "__main__":
