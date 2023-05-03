@@ -38,10 +38,24 @@ class BacnetDevice():
 
     def __dir__(self):
         return list(self.obj.keys()) + \
-               list(self.properties.keys())
+            list(self.properties.keys())
 
     def toDto(self):
         return BacnetDeviceDto(self.obj)
+
+    def oct2Address(self, octetString):
+        octets = str(octetString)[:-1].split('\\')
+        ipString: str = ""
+        if len(octets) <= 1:
+            ipString = None
+        elif len(octets) == 2:
+            ipString = str(int(octets[1][1:], 16))
+        elif len(octets) == 7:
+            ipString = \
+                f"{int(octets[1][1:], 16)}.{int(octets[2][1:], 16)}.{int(octets[3][1:], 16)}.{int(octets[4][1:], 16)}:{int(octets[5][1:] + octets[6][1:], 16)}"
+        else:
+            ipString = octetString
+        return ipString
 
     def normalize(self, property, value):
         try:
@@ -51,59 +65,76 @@ class BacnetDevice():
                 try:
                     normalized["value"] = \
                         [{"device": str(v.device),
-                          "address": str(v.address.macAddress)} for v in value]
+                          "address": self.oct2Address(v.address.macAddress)}
+                            for v in value]
                     return normalized
                 except Exception as e:
-                    print(e)
+                    print(f"{property}: {e}")
+
             elif property == "time-of-device-restart":
                 normalized["value"] = str(
                     f"{value.dateTime.date} {value.dateTime.time}")
                 return normalized
+
             elif property == "object-list":
                 normalized["value"] = [str(v) for v in value]
                 return normalized
+
             elif property == "utc-time-synchronization-recipients":
                 try:
                     normalized["value"] = \
                         [{"device": str(v.device),
-                          "address": str(v.address.macAddress)} for v in value]
+                          "address": self.oct2Address(v.address.macAddress)}
+                            for v in value]
                     return normalized
                 except Exception as e:
-                    print(e)
+                    print(f"{property}: {e}")
+
             elif property == "protocol-object-types-supported":
                 normalized["value"] = str(value).split(";")
                 return normalized
+
             elif property == "protocol-services-supported":
                 normalized["value"] == str(value).split(";")
                 return normalized
+
             elif property == "time-synchronization-recipients":
                 try:
                     normalized["value"] = \
                         [{"device": str(v.device),
-                          "address": str(v.address.macAddress)} for v in value]
+                          "address": self.oct2Address(v.address.macAddress)}
+                            for v in value]
                     return normalized
                 except Exception as e:
-                    print(e)
+                    print(f"{property}: {e}")
+
             elif property == "align-intervals":
                 normalized["value"] == "True" if 1 else "False"
                 return normalized
+
             elif property == "daylight-savings-status":
                 normalized["value"] == "True" if 1 else "False"
                 return normalized
+
             elif property == "last-restore-time":
                 normalized["value"] = str(
                     f"{value.dateTime.date} {value.dateTime.time}")
                 return normalized
+
             elif property == "active-cov-subscriptions":
                 try:
                     normalized["value"] = \
-                        [{"device": str(v.recipient.device),
-                          "address": str(v.recipient.address.macAddress),
+                        [{"device":
+                          self.oct2Address(v.recipient
+                                            .recipient
+                                            .address
+                                            .macAddress),
                           "timeRemaining": str(v.timeRemaining),
                           "covIncrement": str(v.covIncrement)} for v in value]
                     return normalized
                 except Exception as e:
-                    print(e)
+                    print(f"{property}: {e}")
+
             else:
                 normalized["value"] = str(value)
                 return normalized
