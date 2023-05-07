@@ -38,9 +38,10 @@ async def main():
             pass
 
     for dev in devices:
-        print(f"{dev.Id}: {dev.address}")
-        for prop in dev.properties:
-            print(f"{prop}: {dev.properties[prop]}")
+        # print(f"{dev.Id}: {dev.address}")
+        # for prop in dev.properties:
+        #     print(f"{prop}: {dev.properties[prop]}")
+        print(dev)
         print("\n")
 
 

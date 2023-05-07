@@ -5,6 +5,7 @@ and a factory method to create BacnetDevice DTOs.
 
 import json
 import configparser
+import sys
 from bacpypes3.local.device import DeviceObject
 from bacpypes3.pdu import IPv4Address
 # from bacpypes3.basetypes import ObjectIdentifier
@@ -40,9 +41,18 @@ class BacnetDevice():
         return list(self.obj.keys()) + \
             list(self.properties.keys())
 
-    def toDto(self):
-        return BacnetDeviceDto(self.obj)
+    @classmethod
+    def oct2uuid(self, octetString):
+        octets = str(octetString)[1:][:-1].split('\\')
+        uuid = ""
+        for octet in octets:
+            try:
+                uuid += str(int(octet[1:], 16))
+            except:
+                uuid += str(octet[1:])
+        return uuid
 
+    @classmethod
     def oct2Address(self, octetString):
         octets = str(octetString)[:-1].split('\\')
         ipString: str = ""
@@ -52,10 +62,14 @@ class BacnetDevice():
             ipString = str(int(octets[1][1:], 16))
         elif len(octets) == 7:
             ipString = \
-                f"{int(octets[1][1:], 16)}.{int(octets[2][1:], 16)}.{int(octets[3][1:], 16)}.{int(octets[4][1:], 16)}:{int(octets[5][1:] + octets[6][1:], 16)}"
+                f"{int(octets[1][1:], 16)}.{int(octets[2][1:], 16)}.{int(octets[3][1:], 16)}.{int(octets[4][1:], 16)}:{int(octets[5][1:] + octets[6][1:], 16)}"  # noqa: E501
+
         else:
             ipString = octetString
         return ipString
+
+    def toDto(self):
+        return BacnetDeviceDto(self.obj)
 
     def normalize(self, property, value):
         try:
@@ -69,7 +83,7 @@ class BacnetDevice():
                             for v in value]
                     return normalized
                 except Exception as e:
-                    print(f"{property}: {e}")
+                    sys.stderr.buffer.write(bytes(f"{property}: {e}", "utf-8"))
 
             elif property == "time-of-device-restart":
                 normalized["value"] = str(
@@ -88,7 +102,7 @@ class BacnetDevice():
                             for v in value]
                     return normalized
                 except Exception as e:
-                    print(f"{property}: {e}")
+                    sys.stderr.buffer.write(bytes(f"{property}: {e}", "utf-8"))
 
             elif property == "protocol-object-types-supported":
                 normalized["value"] = str(value).split(";")
@@ -106,7 +120,7 @@ class BacnetDevice():
                             for v in value]
                     return normalized
                 except Exception as e:
-                    print(f"{property}: {e}")
+                    sys.stderr.buffer.write(bytes(f"{property}: {e}", "utf-8"))
 
             elif property == "align-intervals":
                 normalized["value"] == "True" if 1 else "False"
@@ -120,7 +134,9 @@ class BacnetDevice():
                 normalized["value"] = str(
                     f"{value.dateTime.date} {value.dateTime.time}")
                 return normalized
-
+            elif property == "device-uuid":
+                normalized["value"] = self.oct2uuid(value)
+                return normalized
             elif property == "active-cov-subscriptions":
                 try:
                     normalized["value"] = \
@@ -129,17 +145,19 @@ class BacnetDevice():
                                             .recipient
                                             .address
                                             .macAddress),
+                          "propertyReference":
+                            f"{v.monitoredPropertyReference.objectIdentifier}-{v.monitoredPropertyReference.propertyIdentifier}",  # noqa: E501
                           "timeRemaining": str(v.timeRemaining),
                           "covIncrement": str(v.covIncrement)} for v in value]
                     return normalized
                 except Exception as e:
-                    print(f"{property}: {e}")
+                    sys.stderr.buffer.write(bytes(f"{property}: {e}", "utf-8"))
 
             else:
                 normalized["value"] = str(value)
                 return normalized
         except Exception as e:
-            print(f"ERROR: {e}")
+            sys.stderr.buffer.write(bytes(f"{e}", "utf-8"))
             return ""
 
 
@@ -171,7 +189,8 @@ class LocalBacnetDevice:
         LocalBacnetDevice.__localAddress = \
             LocalBacnetDevice.__config.get("network", "interface")
 
-        print(f"""
+    def __str__(self) -> str:
+        return f"""
             id: {LocalBacnetDevice.__objId}
             address: {LocalBacnetDevice.__localAddress}
             name: {LocalBacnetDevice.__objName}
@@ -179,7 +198,7 @@ class LocalBacnetDevice:
             segmentation: {LocalBacnetDevice.__segmentation}
             max segments: {LocalBacnetDevice.__maxSegments}
             vendor id: {LocalBacnetDevice.__vendorId}
-            """)
+            """
 
     @classmethod
     @property
