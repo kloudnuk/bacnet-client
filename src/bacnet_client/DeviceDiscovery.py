@@ -5,20 +5,16 @@ on the network along with all the properties they support and a list
 of bacnet objects the device is a parent to.
 """
 
-import asyncio
-from Device import BacnetDevice, LocalBacnetDevice
 from bacpypes3.ipv4.app import NormalApplication
 from bacpypes3.pdu import Address
+from MongoClient import Mongodb
+from Device import BacnetDevice
 
 
-async def main():
+async def run(app: NormalApplication):
 
     # # Define the local bacnet device (the client)
-    localDevice = LocalBacnetDevice()
 
-    # Create instance of the bacpype3 application object
-    app = NormalApplication(localDevice.deviceObject,
-                            localDevice.deviceAddress)
     devices = []
     iams = await app.who_is(0, 4194303, Address("*"))
     iamDict = {iam.iAmDeviceIdentifier: iam.pduSource for iam in iams}
@@ -37,13 +33,10 @@ async def main():
             print("ERROR: ", be)
             pass
 
-    for dev in devices:
-        # print(f"{dev.Id}: {dev.address}")
-        # for prop in dev.properties:
-        #     print(f"{prop}: {dev.properties[prop]}")
-        print(dev)
-        print("\n")
+    await Mongodb.pingServer()
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    await Mongodb.writeDevices(
+        [device.obj for device in devices],
+        Mongodb.getDb(),
+        "Devices"
+    )
