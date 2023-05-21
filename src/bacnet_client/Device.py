@@ -1,38 +1,79 @@
-"""
-Bacnet Device type definition with methods to encode/decode to and from json,
-and a factory method to create BacnetDevice DTOs.
-"""
 
+import sys
 import json
 import configparser
-import sys
-from bacpypes3.local.device import DeviceObject
 from bacpypes3.pdu import IPv4Address
+from bacpypes3.local.device import DeviceObject
 
 
 class BacnetDevice():
+
+    """
+    Bacnet Device  normalizes all bacnet library methods used to data suited to be exported to a database.
+    It overrides a number of methods to allow for easy string conversion, serialization, sorting and merging values
+    from a previous state.
+    """
+
     def __init__(
-            self, id, addr: str, props: dict) -> None:
+            self, id, addr: str, props: dict, doNormalize=True) -> None:
         self.Id = id
         self.address: str = addr
-        self.properties: dict = {p:
-                                 self.normalize(str(p),
-                                                props[p]) for p in props}
+        if doNormalize:
+            self.properties: dict = {p: self.normalize(str(p),
+                                                       props[p]) for p in props}
+        else:
+            self.properties = props
         self.obj: dict = {"id": str(self.Id),
                           "address": self.address,
                           "properties": self.properties}
 
     def __str__(self) -> str:
-        return json.dumps(str(self.obj))
+        return json.dumps(self.obj)
 
     def __bytes__(self) -> bytes:
         databytes = str(self.obj).encode('utf-8')
         datalen = len(databytes).to_bytes(2, byteorder='big')
         return datalen + databytes
 
-    def __dir__(self):
+    def __dir__(self) -> dict:
         return list(self.obj.keys()) + \
             list(self.properties.keys())
+
+    def __hash__(self):
+        return hash((self.Id, self.address))
+
+    def __add__(self, other) -> None:
+        if type(other) == BacnetDevice:
+            for p in self.obj:
+                self.obj[p] = other.obj[p]
+        else:
+            raise Exception("Cannot merge (add) with a type other than BacnetDevice")
+
+    def __eq__(self, other) -> bool:
+        if type(other) == BacnetDevice:
+            return int(str(self.Id).split(",")[1]) == int(str(other.Id).split(",")[1]) and \
+                str(self.address) == str(other.address)
+        else:
+            raise Exception("Cannot compare with a type other than BacnetDevice")
+
+    def __ne__(self, other) -> bool:
+        if type(other) == BacnetDevice:
+            return int(str(self.Id).split(",")[1]) != int(str(other.Id).split(",")[1]) and \
+                str(self.address) != str(other.address)
+        else:
+            raise Exception("Cannot compare with a type other than BacnetDevice")
+
+    def __lt__(self, other) -> bool:
+        if type(other) == BacnetDevice:
+            return int(str(self.Id).split(",")[1]) < int(str(other.Id).split(",")[1])
+        else:
+            raise Exception("Cannot compare with a type other than BacnetDevice")
+
+    def __gt__(self, other) -> bool:
+        if type(other) == BacnetDevice:
+            return int(str(self.Id).split(",")[1]) > int(str(other.Id).split(",")[1])
+        else:
+            raise Exception("Cannot compare with a type other than BacnetDevice")
 
     @classmethod
     def oct2uuid(self, octetString):
@@ -64,7 +105,7 @@ class BacnetDevice():
     def normalize(self, property, value):
         try:
             normalized: dict = {"value": "",
-                                "type": str(type(value))}
+                                "type": str(type(value))[8:-2]}
             if property == "restart-notification-recipients":
                 try:
                     normalized["value"] = \
@@ -152,62 +193,52 @@ class BacnetDevice():
 
 
 class LocalBacnetDevice:
+
+    """
+    The client does not need to expose any services nor listen for network requests so it only implements
+    properties as needed. There should only be one local device per application so it is Singleton.
+    """
+
     __instance = None
-    __config = configparser.ConfigParser()
-    __objId = None
-    __objName = None
-    __maxApduLength = None
-    __segmentation = None
-    __maxSegments = None
-    __vendorId = None
-    __vendorId = None
 
     def __init__(self) -> None:
-        LocalBacnetDevice.__config.read('local-device.ini')
-        LocalBacnetDevice.__objId = LocalBacnetDevice.__config.get(
-            "device", "objectIdentifier")
-        LocalBacnetDevice.__objName = LocalBacnetDevice.__config.get(
-            "device", "objectName")
-        LocalBacnetDevice.__maxApduLength = LocalBacnetDevice.__config.get(
-            "network", "maxApduLengthAccepted")
-        LocalBacnetDevice.__segmentation = LocalBacnetDevice.__config.get(
-            "network", "segmentationSupported")
-        LocalBacnetDevice.__maxSegments = LocalBacnetDevice.__config.get(
-            "network", "maxSegmentsAccepted")
-        LocalBacnetDevice.__vendorId = LocalBacnetDevice.__config.get(
-            "device", "vendorIdentifier")
-        LocalBacnetDevice.__localAddress = \
-            LocalBacnetDevice.__config.get("network", "interface")
-
-    def __str__(self) -> str:
-        return f"""
-            id: {LocalBacnetDevice.__objId}
-            address: {LocalBacnetDevice.__localAddress}
-            name: {LocalBacnetDevice.__objName}
-            max apdu: {LocalBacnetDevice.__maxApduLength}
-            segmentation: {LocalBacnetDevice.__segmentation}
-            max segments: {LocalBacnetDevice.__maxSegments}
-            vendor id: {LocalBacnetDevice.__vendorId}
-            """
-
-    @classmethod
-    @property
-    def deviceObject(cls):
-        return DeviceObject(
-            objectIdentifier=("device", LocalBacnetDevice.__objId),
-            objectName=LocalBacnetDevice.__objName,
-            maxApduLengthAccepted=LocalBacnetDevice.__maxApduLength,
-            segmentationSupported=LocalBacnetDevice.__segmentation,
-            maxSegmentsAccepted=LocalBacnetDevice.__maxSegments,
-            vendorIdentifier=LocalBacnetDevice.__vendorId,
-        )
-
-    @classmethod
-    @property
-    def deviceAddress(cls):
-        return IPv4Address(LocalBacnetDevice.__localAddress)
+        self.config = configparser.ConfigParser()
+        self.config.read('local-device.ini')
+        self.objId = self.config.get("device", "objectIdentifier")
+        self.objName = self.config.get("device", "objectName")
+        self.maxApduLength = self.config.get("network", "maxApduLengthAccepted")
+        self.segmentation = self.config.get("network", "segmentationSupported")
+        self.maxSegments = self.config.get("network", "maxSegmentsAccepted")
+        self.vendorId = self.config.get("device", "vendorIdentifier")
+        self.localAddress = self.config.get("network", "interface")
 
     def __new__(cls):
         if LocalBacnetDevice.__instance is None:
             LocalBacnetDevice.__instance = object.__new__(cls)
         return LocalBacnetDevice.__instance
+
+    def __str__(self) -> str:
+        return f"""
+            id: {self.objId}
+            address: {self.localAddress}
+            name: {self.objName}
+            max apdu: {self.maxApduLength}
+            segmentation: {self.segmentation}
+            max segments: {self.maxSegments}
+            vendor id: {self.vendorId}
+            """
+
+    @property
+    def deviceObject(self):
+        return DeviceObject(
+            objectIdentifier=("device", self.objId),
+            objectName=self.objName,
+            maxApduLengthAccepted=self.maxApduLength,
+            segmentationSupported=self.segmentation,
+            maxSegmentsAccepted=self.maxSegments,
+            vendorIdentifier=self.vendorId,
+        )
+
+    @property
+    def deviceAddress(self):
+        return IPv4Address(self.localAddress)

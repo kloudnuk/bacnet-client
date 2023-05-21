@@ -1,5 +1,5 @@
 # BACnet Client
-The BACnet Client module uses Joel Bender's Bacpypes3 python package as its BACnet stack in order to implement a service layer with the following service interfaces:<br>
+The BACnet Client module uses Joel Bender's Bacpypes3 python package as its BACnet stack in order to implement a service layer with the following interfaces:<br>
 - Device discovery
 - Point discovery
 - Trend collection
@@ -8,24 +8,19 @@ The BACnet Client module uses Joel Bender's Bacpypes3 python package as its BACn
 - Schedule discovery
 - Firmware and application version discovery
 
+Each service interface will support the *initialize* and *run* methods through its corresponding service class. The app.py file is the entry-point to the application, it is only in charge of declaring imports for each available service class, and calling the init and run methods for them all.
+
 ![bacnet-client](docs/res/BACnetClient.png)
 
 ## Device Discovery
-### Service Layer
-Use the bacpypes3 who-is native service interface to discover bacnet devices in an Async tasks that run on an infinite loop. Design a set of DTOs (Data Transfer Objects) to capture the device information schema. Send any new device data to the in-memory database to cache it. Develop a CRUD interface for the selected in-memory database.<br>
+- Uses the bacpypes3 who-is native service interface to discover bacnet devices in a series of Async tasks that run on a loop.
 > Will need manage the environment's firewall in order to fully control bacnet ip port management from the application side. (for example on Ubuntu 22.04)<br>
 `sudo ufw allow from any to any port 47808 proto udp`
-
-### Data Association Layer
-Develop Object Association Dictionaries between the different entity types the service deals with (Devices-to-points, device-to-firmware, etc.). Cache the association entries in an in-memory database and push periodically to a long term database.
-### Data Normalization Layer
-Transforms cached device data transfer objects collected from the service layer component into the final long term database schema's data definition objects.
-### Long Term Persistance (System Object Map)
-Database interface for Create, Update, and Delete operations.
+- Initializes the database with device data, creates a list of devices objects to track their state
+- The device objects implement an Obvservable interface to update a document's field(s) if it chagned.
+- The device list object also implements the Observable interface and either inserts or delete devices.
+- implement object comparison operators and compare each device to the current state for any changes, if an existing device has changed state, change the model's state accordingly and emit a change of value event for observer implementations such as the database client.
+- Once the database client receives the change of value event it will update the corresponding field on the database.
 
 ## Data Point Discovery
-### Service Layer
-### Data Clean-up Layer
-### Data Association Layer
-### Data Normalization Layer
-### Long Term Persistance
+
