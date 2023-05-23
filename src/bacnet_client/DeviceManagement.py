@@ -1,4 +1,5 @@
 
+import time
 from bacpypes3.ipv4.app import NormalApplication
 from Device import LocalBacnetDevice
 from bacpypes3.pdu import Address
@@ -32,9 +33,15 @@ class DeviceManager(object):
             DeviceManager.__instance = object.__new__(cls)
         return DeviceManager.__instance
 
+    async def run(self, interval: int):
+        while True:
+            await self.discover()
+            await self.commit()
+            time.sleep(interval * 60)
+
     async def discover(self):
         """ Sends a who-is broadcast to the subnet and stores a list of responses. It parses
-        through the responses and creates a set of bacnet device definition objects with the 
+        through the responses and creates a set of bacnet device definition objects with the
         corresponding response information.
         """
         print("discovery started...")

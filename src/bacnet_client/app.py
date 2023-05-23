@@ -1,6 +1,6 @@
 
 import asyncio
-import time
+
 # import services
 import bacnet_client.DeviceManagement as dm
 
@@ -11,13 +11,11 @@ async def main():
     Run or schedule all your services from this entry-point script.
     """
 
+    # Declare service instances
     devmgr = dm.DeviceManager()
 
-    await devmgr.discover()
-    await devmgr.commit()
-    
-    print("1st discovery and commit complete")
-    time.sleep(60)
+    # Run services
+    await devmgr.run(3)
 
 
 if __name__ == "__main__":
