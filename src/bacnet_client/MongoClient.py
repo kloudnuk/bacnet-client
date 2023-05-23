@@ -51,6 +51,10 @@ class Mongodb():
     def getCollection(self, colName: str):
         return self.client[colName]
 
+    async def getDocumentCount(self, db, collectionName: str):
+        n = await db[collectionName].count_documents({})
+        return n
+
     async def writeDevice(self, device: dict, db, collectionName: str):
         result = None
         try:
@@ -67,7 +71,7 @@ class Mongodb():
         except Exception as e:
             sys.stderr.buffer.write(bytes(f"{e}: {result_set}\n", "utf-8"))
 
-    async def replaceDevice(self, old_device, new_device, db, collectionName: str):
-        result = await db[collectionName].find_one_and_replace({'id': old_device.obj["id"]},
-                                                               new_device.obj)
+    async def replaceDevice(self, device: dict, db, collectionName: str):
+        result = await db[collectionName].find_one_and_replace({'id': device["id"]},
+                                                               device)
         print(f"{result}")

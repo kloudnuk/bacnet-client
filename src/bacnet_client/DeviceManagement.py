@@ -18,8 +18,7 @@ class DeviceManager(object):
     __instance = None
 
     def __init__(self) -> None:
-        self.devices = set()
-        self.committed = []
+        self.devices: set = set()
         self.localDevice = LocalBacnetDevice()
         self.app = NormalApplication(self.localDevice.deviceObject,
                                      self.localDevice.deviceAddress)
@@ -34,6 +33,11 @@ class DeviceManager(object):
         return DeviceManager.__instance
 
     async def discover(self):
+        """ Sends a who-is broadcast to the subnet and stores a list of responses. It parses
+        through the responses and creates a set of bacnet device definition objects with the 
+        corresponding response information.
+        """
+        print("discovery started...")
         iams = await self.app.who_is(self.lowLimit,
                                      self.highLimit,
                                      self.address)
@@ -50,26 +54,40 @@ class DeviceManager(object):
             except BaseException as be:
                 print("ERROR: ", be)
                 pass
+        print("discovery completed...")
 
     async def commit(self):
-        # Compare (or populate if empty) committed list of devices, to
-        # to discovered set of devices. Use BacnetDevice class add operator to 
-        # merge new individual field changes and the eq operator to know if there
-        # properties that have changed.
-        if self.committed.count() == 0:
-            devices = list(self.devices)
-            self.committed = devices
+        """Check to see if the database collection is empty or has less devices than the in-memory device list.
+           1. If the collections is empty just write all devices
+           2. if the collection is NOT empty and has the same device count as memory then:
+                 2.1 replace all devices.
+           3. If the collection is NOT empty and has less devices than in memory device list then:
+                 3.1 find the highest device id number in the database
+                 3.2 replace all devices with a device id smaller than the id found in step 3.1
+                 3.3 write all devices with a device id larger than the id found in step 3.1
+        """
+        print("commit to database has started...")
+        devices = list(self.devices)
+        docCount = await self.mongo.getDocumentCount(self.mongo.getDb(),
+                                                     "Devices")
+        print(f"Doc Count: {docCount}")
+        print(f"Device Count: {len(devices)}")
+        if docCount == 0:
             await self.mongo.writeDevices(
-                [device.obj for device in self.committed],
+                [device.obj for device in devices],
                 self.mongo.getDb(),
                 "Devices"
             )
+        elif docCount == len(devices):
+            for device in devices:
+                await self.mongo.replaceDevice(device.obj,
+                                               self.mongo.getDb(),
+                                               "Devices")
+        elif docCount < len(devices):
+            pass
+        elif docCount > len(devices):
+            pass
         else:
-            for i, device in enumerate(devices):
-                if device != self.committed[i]:
-                    self.committed + device
-                    self.mongo.replaceDevice(device,
-                                             self.committed[i],
-                                             self.mongo.getDb(),
-                                             "Devices")
+            pass
+        print("commit to database completed...")
         self.devices.clear()

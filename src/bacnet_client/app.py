@@ -1,6 +1,6 @@
 
 import asyncio
-
+import time
 # import services
 import bacnet_client.DeviceManagement as dm
 
@@ -14,7 +14,10 @@ async def main():
     devmgr = dm.DeviceManager()
 
     await devmgr.discover()
-    [print(dev) for dev in devmgr.devices]
+    await devmgr.commit()
+    
+    print("1st discovery and commit complete")
+    time.sleep(60)
 
 
 if __name__ == "__main__":
