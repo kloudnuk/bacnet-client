@@ -1,6 +1,7 @@
 
 import sys
 import json
+import pytz
 import configparser
 from bacpypes3.pdu import IPv4Address
 from bacpypes3.local.device import DeviceObject
@@ -211,6 +212,7 @@ class LocalBacnetDevice:
         self.maxSegments = self.config.get("network", "maxSegmentsAccepted")
         self.vendorId = self.config.get("device", "vendorIdentifier")
         self.localAddress = self.config.get("network", "interface")
+        self.tz = pytz.timezone(self.config.get("device", "tz"))
 
     def __new__(cls):
         if LocalBacnetDevice.__instance is None:

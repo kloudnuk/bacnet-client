@@ -1,5 +1,6 @@
 
 import time
+import datetime
 from bacpypes3.ipv4.app import NormalApplication
 from Device import LocalBacnetDevice
 from bacpypes3.pdu import Address
@@ -48,19 +49,20 @@ class DeviceManager(object):
         iams = await self.app.who_is(self.lowLimit,
                                      self.highLimit,
                                      self.address)
+        print(f"{len(iams)} BACnet IP devices found...")
         iamDict = {iam.iAmDeviceIdentifier: iam.pduSource for iam in iams}
         for id in iamDict:
-            try:
-                # Get device information
-                propList = await self.app.read_property(
-                    iamDict[id], id, "propertyList"
-                )
-                propDict = {str(p): await self.app.read_property(
-                    iamDict[id], id, str(p)) for p in propList}
-                self.devices.add(BacnetDevice(id, str(iamDict[id]), propDict))
-            except BaseException as be:
-                print("ERROR: ", be)
-                pass
+            propList = await self.app.read_property(iamDict[id], id, "propertyList")
+            propDict = {}
+            for prop in propList:
+                try:
+                    property = await self.app.read_property(iamDict[id], id, str(prop))
+                    propDict[str(prop)] = property
+                except BaseException as be:
+                    propDict[str(prop)] = None
+                    print(f"ERROR {datetime.datetime.now()} - {id} - {be}")
+            self.devices.add(BacnetDevice(id, str(iamDict[id]), propDict))
+
         print("discovery completed...")
 
     async def commit(self):
