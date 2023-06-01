@@ -1,10 +1,10 @@
 
 import time
+import datetime as dt
 from bacpypes3.ipv4.app import NormalApplication
-from Device import LocalBacnetDevice
+from Device import LocalBacnetDevice, BacnetDevice
 from bacpypes3.pdu import Address
 from MongoClient import Mongodb
-from Device import BacnetDevice
 
 
 class DeviceManager(object):
@@ -48,20 +48,22 @@ class DeviceManager(object):
         iams = await self.app.who_is(self.lowLimit,
                                      self.highLimit,
                                      self.address)
+        print(f"{len(iams)} BACnet IP devices found...")
         iamDict = {iam.iAmDeviceIdentifier: iam.pduSource for iam in iams}
         for id in iamDict:
-            try:
-                # Get device information
-                propList = await self.app.read_property(
-                    iamDict[id], id, "propertyList"
-                )
-                propDict = {str(p): await self.app.read_property(
-                    iamDict[id], id, str(p)) for p in propList}
-                self.devices.add(BacnetDevice(id, str(iamDict[id]), propDict))
-            except BaseException as be:
-                print("ERROR: ", be)
-                pass
-        print("discovery completed...")
+            propList = await self.app.read_property(iamDict[id], id, "propertyList")
+            propDict = {}
+            for prop in propList:
+                try:
+                    property = await self.app.read_property(iamDict[id], id, str(prop))
+                    propDict[str(prop)] = property
+                except BaseException as be:
+                    propDict[str(prop)] = None
+                    print(f"ERROR {dt.datetime.now(tz=self.localDevice.tz)} - {id} - {be}")
+            device = BacnetDevice(id, str(iamDict[id]), propDict)
+            device.obj["last synced"] = dt.datetime.now(tz=self.localDevice.tz)
+            self.devices.add(device)
+            print("discovery completed...")
 
     async def commit(self):
         """Check to see if the database collection is empty or has less devices than the in-memory device list.
