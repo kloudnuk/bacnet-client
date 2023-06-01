@@ -1,11 +1,10 @@
 
 import time
-import datetime
+import datetime as dt
 from bacpypes3.ipv4.app import NormalApplication
-from Device import LocalBacnetDevice
+from Device import LocalBacnetDevice, BacnetDevice
 from bacpypes3.pdu import Address
 from MongoClient import Mongodb
-from Device import BacnetDevice
 
 
 class DeviceManager(object):
@@ -60,10 +59,12 @@ class DeviceManager(object):
                     propDict[str(prop)] = property
                 except BaseException as be:
                     propDict[str(prop)] = None
-                    print(f"ERROR {datetime.datetime.now()} - {id} - {be}")
-            self.devices.add(BacnetDevice(id, str(iamDict[id]), propDict))
-
-        print("discovery completed...")
+                    print(
+                        f"ERROR {dt.datetime.now(tz=self.localDevice.tz)} - {id} - {be}")
+            device = BacnetDevice(id, str(iamDict[id]), propDict)
+            device.obj["last synced"] = dt.datetime.now(tz=self.localDevice.tz)
+            self.devices.add(device)
+            print("discovery completed...")
 
     async def commit(self):
         """Check to see if the database collection is empty or has less devices than the in-memory device list.

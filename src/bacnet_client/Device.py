@@ -18,15 +18,33 @@ class BacnetDevice():
     def __init__(
             self, id, addr: str, props: dict, doNormalize=True) -> None:
         self.Id = id
-        self.address: str = addr
+        self.__address: str = addr
+        self.__lastSynced = None
         if doNormalize:
-            self.properties: dict = {p: self.normalize(str(p),
-                                                       props[p]) for p in props}
+            self.__properties: dict = {p: self.normalize(str(p),
+                                                         props[p]) for p in props}
         else:
-            self.properties = props
+            self.__properties = props
+
         self.obj: dict = {"id": str(self.Id),
-                          "address": self.address,
-                          "properties": self.properties}
+                          "address": self.__address,
+                          "last synced": str(self.__lastSynced),
+                          "properties": self.__properties}
+
+    @property
+    def address(self):
+        self.obj["address"] = self.__address
+        return self.__address
+
+    @property
+    def lastSynced(self):
+        self.obj["last synced"] = self.__lastSynced
+        return self.__lastSynced
+
+    @property
+    def properties(self):
+        self.obj["properties"] = self.__properties
+        return self.__properties
 
     def __str__(self) -> str:
         return json.dumps(self.obj)
@@ -37,30 +55,29 @@ class BacnetDevice():
         return datalen + databytes
 
     def __dir__(self) -> dict:
-        return list(self.obj.keys()) + \
-            list(self.properties.keys())
+        return list(self.obj.keys())
 
     def __hash__(self):
-        return hash((self.Id, self.address))
+        return hash((self.Id, self.__address))
 
     def __add__(self, other) -> None:
         if type(other) == BacnetDevice:
             for p in self.obj:
                 self.obj[p] = other.obj[p]
         else:
-            raise Exception("Cannot merge (add) with a type other than BacnetDevice")
+            raise Exception("Cannot merge (+) with a type other than BacnetDevice")
 
     def __eq__(self, other) -> bool:
         if type(other) == BacnetDevice:
             return int(str(self.Id).split(",")[1]) == int(str(other.Id).split(",")[1]) and \
-                str(self.address) == str(other.address)
+                str(self.__address) == str(other.__address)
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
     def __ne__(self, other) -> bool:
         if type(other) == BacnetDevice:
             return int(str(self.Id).split(",")[1]) != int(str(other.Id).split(",")[1]) and \
-                str(self.address) != str(other.address)
+                str(self.__address) != str(other.__address)
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
@@ -228,6 +245,7 @@ class LocalBacnetDevice:
             segmentation: {self.segmentation}
             max segments: {self.maxSegments}
             vendor id: {self.vendorId}
+            timezone: {self.tz}
             """
 
     @property
@@ -238,7 +256,7 @@ class LocalBacnetDevice:
             maxApduLengthAccepted=self.maxApduLength,
             segmentationSupported=self.segmentation,
             maxSegmentsAccepted=self.maxSegments,
-            vendorIdentifier=self.vendorId,
+            vendorIdentifier=self.vendorId
         )
 
     @property
