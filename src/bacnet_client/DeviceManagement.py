@@ -64,7 +64,7 @@ class DeviceManager(object):
             device = BacnetDevice(id, str(iamDict[id]), propDict)
             device.obj["last synced"] = dt.datetime.now(tz=self.localDevice.tz)
             self.devices.add(device)
-            print("discovery completed...")
+        print("discovery completed...")
 
     async def commit(self):
         """Check to see if the database collection is empty or has less devices than the in-memory device list.
