@@ -17,34 +17,32 @@ class BacnetDevice():
 
     def __init__(
             self, id, addr: str, props: dict, doNormalize=True) -> None:
-        self.Id = id
-        self.__address: str = addr
-        self.__lastSynced = None
         if doNormalize:
             self.__properties: dict = {p: self.normalize(str(p),
                                                          props[p]) for p in props}
         else:
             self.__properties = props
 
-        self.obj: dict = {"id": str(self.Id),
-                          "address": self.__address,
-                          "last synced": str(self.__lastSynced),
+        self.obj: dict = {"id": str(id),
+                          "address": addr,
+                          "last synced": None,
                           "properties": self.__properties}
 
     @property
+    def deviceId(self):
+        return self.obj["id"]
+
+    @property
     def address(self):
-        self.obj["address"] = self.__address
-        return self.__address
+        return self.obj["address"]
 
     @property
     def lastSynced(self):
-        self.obj["last synced"] = self.__lastSynced
-        return self.__lastSynced
+        return self.obj["last synced"]
 
     @property
     def properties(self):
-        self.obj["properties"] = self.__properties
-        return self.__properties
+        return self.obj["properties"]
 
     def __str__(self) -> str:
         return json.dumps(self.obj)
@@ -58,7 +56,7 @@ class BacnetDevice():
         return list(self.obj.keys())
 
     def __hash__(self):
-        return hash((self.Id, self.__address))
+        return hash((self.deviceId, self.address))
 
     def __add__(self, other) -> None:
         if type(other) == BacnetDevice:
@@ -69,27 +67,27 @@ class BacnetDevice():
 
     def __eq__(self, other) -> bool:
         if type(other) == BacnetDevice:
-            return int(str(self.Id).split(",")[1]) == int(str(other.Id).split(",")[1]) and \
-                str(self.__address) == str(other.__address)
+            return int(str(self.deviceId).split(",")[1]) == int(str(other.deviceId).split(",")[1]) and \
+                str(self.address) == str(other.address)
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
     def __ne__(self, other) -> bool:
         if type(other) == BacnetDevice:
-            return int(str(self.Id).split(",")[1]) != int(str(other.Id).split(",")[1]) and \
-                str(self.__address) != str(other.__address)
+            return int(str(self.deviceId).split(",")[1]) != int(str(other.deviceId).split(",")[1]) and \
+                str(self.address) != str(other.address)
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
     def __lt__(self, other) -> bool:
         if type(other) == BacnetDevice:
-            return int(str(self.Id).split(",")[1]) < int(str(other.Id).split(",")[1])
+            return int(str(self.deviceId).split(",")[1]) < int(str(other.deviceId).split(",")[1])
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
     def __gt__(self, other) -> bool:
         if type(other) == BacnetDevice:
-            return int(str(self.Id).split(",")[1]) > int(str(other.Id).split(",")[1])
+            return int(str(self.deviceId).split(",")[1]) > int(str(other.deviceId).split(",")[1])
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
