@@ -2,7 +2,7 @@
 
 [[package]]
 name = "bacpypes3"
-version = "0.0.73"
+version = "0.0.74"
 description = "BACnet Communications Library"
 category = "main"
 optional = false
@@ -14,7 +14,7 @@ develop = true
 type = "git"
 url = "https://github.com/viteski/BACpypes3.git"
 reference = "HEAD"
-resolved_reference = "06b1c50f33a47dbbeb7f73eee2006727b41cd02b"
+resolved_reference = "010360c1acde585c26ba0ff4958be6be2f04c79b"
 
 [[package]]
 name = "colorama"

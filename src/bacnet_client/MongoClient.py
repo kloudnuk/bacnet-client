@@ -75,3 +75,9 @@ class Mongodb():
         result = await db[collectionName].find_one_and_replace({'id': device["id"]},
                                                                device)
         print(f"{result}")
+
+    async def findDevices(self, db, collectionName: str, query=None, projection=None):
+        devices = []
+        async for dev in db[collectionName].find(query, projection=projection):
+            devices.append(dev)
+        return devices
