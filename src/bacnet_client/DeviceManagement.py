@@ -93,7 +93,7 @@ class DeviceManager(object):
                 await self.mongo.replaceDevice(device.obj,
                                                self.mongo.getDb(),
                                                "Devices")
-            self.devices.clear()
+
         elif docCount < len(devices):
             dbPayload = await self.mongo.findDevices(self.mongo.getDb(),
                                                      "Devices",
@@ -102,16 +102,29 @@ class DeviceManager(object):
 
             memDeviceIds = set([int(str(d.deviceId).split(',')[1]) for d in devices])
             dbDeviceIds = set([int(str(d["id"]).split(',')[1]) for d in dbPayload])
+
             newDeviceIds = memDeviceIds - dbDeviceIds
+            foundDeviceIds = memDeviceIds & dbDeviceIds
+
             print(f"devices discovered: {memDeviceIds}")
             print(f"devices pulled from db: {dbDeviceIds}")
             print(f"new devices to push to db: {newDeviceIds}")
+            print(f"devices found to update on the db: {foundDeviceIds}")
+
             newDevices = \
                 list(filter(lambda device:
                             int(str(device.deviceId).split(',')[1]) in list(newDeviceIds),
                             list(self.devices)))
             for nd in newDevices:
                 await self.mongo.writeDevice(nd.obj, self.mongo.getDb(), "Devices")
+
+            foundDevices = \
+                list(filter(lambda device:
+                            int(str(device.deviceId).split(',')[1]) in list(foundDeviceIds),
+                            list(self.devices)))
+            for fd in foundDevices:
+                await self.mongo.replaceDevice(fd.obj, self.mongo.getDb(), "Devices")
+
         elif docCount > len(devices):
             dbPayload = await self.mongo.findDevices(self.mongo.getDb(),
                                                      "Devices",
@@ -132,6 +145,6 @@ class DeviceManager(object):
                 await self.mongo.replaceDevice(fd.obj, self.mongo.getDb(), "Devices")
         else:
             raise Exception("An error is causing Device Mgr to not be able to compare number of devices discovered vs the ones in the database...!")
-    
+
         self.devices.clear()
         print("commit to database completed...")
