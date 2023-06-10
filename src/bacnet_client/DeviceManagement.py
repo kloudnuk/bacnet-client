@@ -51,8 +51,9 @@ class DeviceManager(object):
         print(f"{len(iams)} BACnet IP devices found...")
         iamDict = {iam.iAmDeviceIdentifier: iam.pduSource for iam in iams}
         for id in iamDict:
+            deviceName = await self.app.read_property(iamDict[id], id, "objectName")
             propList = await self.app.read_property(iamDict[id], id, "propertyList")
-            propDict = {}
+            propDict = {"device-name": deviceName}
             for prop in propList:
                 try:
                     property = await self.app.read_property(iamDict[id], id, str(prop))
