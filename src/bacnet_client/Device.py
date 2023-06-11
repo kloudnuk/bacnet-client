@@ -33,6 +33,10 @@ class BacnetDevice():
         return self.obj["id"]
 
     @property
+    def name(self):
+        return self.obj["device-name"]
+
+    @property
     def address(self):
         return self.obj["address"]
 

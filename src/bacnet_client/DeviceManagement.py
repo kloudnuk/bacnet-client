@@ -1,8 +1,8 @@
 
 import time
 import datetime as dt
-from bacpypes3.ipv4.app import NormalApplication
 from Device import LocalBacnetDevice, BacnetDevice
+from app import Bacapp
 from bacpypes3.pdu import Address
 from MongoClient import Mongodb
 
@@ -11,7 +11,7 @@ class DeviceManager(object):
 
     """
     Bacnet Device Discovery Service; the service issues who-is
-    broadcast messages gathereing a list of bacnet devices currently live
+    broadcast messages gathering a list of bacnet devices currently live
     on the network along with all the properties they support and a list
     of bacnet objects the device is a parent to.
     """
@@ -21,8 +21,7 @@ class DeviceManager(object):
     def __init__(self) -> None:
         self.devices: set = set()
         self.localDevice = LocalBacnetDevice()
-        self.app = NormalApplication(self.localDevice.deviceObject,
-                                     self.localDevice.deviceAddress)
+        self.app = Bacapp().app
         self.lowLimit = 0
         self.highLimit = 4194303
         self.address = Address("*")
