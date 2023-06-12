@@ -2,7 +2,6 @@
 import time
 import datetime as dt
 from Device import LocalBacnetDevice, BacnetDevice
-from app import Bacapp
 from bacpypes3.pdu import Address
 from MongoClient import Mongodb
 
@@ -21,7 +20,7 @@ class DeviceManager(object):
     def __init__(self) -> None:
         self.devices: set = set()
         self.localDevice = LocalBacnetDevice()
-        self.app = Bacapp().app
+        self.app = None
         self.lowLimit = 0
         self.highLimit = 4194303
         self.address = Address("*")
@@ -32,7 +31,9 @@ class DeviceManager(object):
             DeviceManager.__instance = object.__new__(cls)
         return DeviceManager.__instance
 
-    async def run(self, interval: int):
+    async def run(self, interval: int, app):
+        if self.app is None:
+            self.app = app
         while True:
             await self.discover()
             await self.commit()
