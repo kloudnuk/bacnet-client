@@ -1,5 +1,6 @@
 
-import sys
+# import sys
+import traceback
 from collections import OrderedDict
 from Device import LocalBacnetDevice
 from MongoClient import Mongodb
@@ -43,14 +44,14 @@ class PointManager(object):
                                                                  '_id': 0})
 
             for device in dbPayload:
+                deviceSpec = {"name": device["properties"]["device-name"]["value"],
+                              "id": device["id"],
+                              "address": device["address"],
+                              "points": {}
+                              }
                 try:
-                    deviceSpec = {"name": device["properties"]["device-name"]["value"],
-                                  "id": device["id"],
-                                  "address": device["address"],
-                                  "points": {}
-                                  }
                     for obj in device["properties"]["object-list"]["value"]:
-
+                        print(f"TYPE: {type(obj)}")
                         pointName = await app.read_property(Address(device["address"]),
                                                             ObjectIdentifier(obj),
                                                             PropertyIdentifier.objectName)
@@ -60,7 +61,8 @@ class PointManager(object):
                                                                  ObjectIdentifier(obj),
                                                                  PropertyIdentifier.presentValue)
                         except:  # noqa: E722
-                            sys.stderr.buffer.write(bytes(f"ERROR {device['id']} - {obj}\n", "utf-8"))
+                            # sys.stderr.buffer.write(bytes(f"ERROR {device['id']} - {obj}\n", "utf-8"))
+                            # traceback.print_exc()
                             continue
 
                         try:
@@ -68,7 +70,8 @@ class PointManager(object):
                                                                                ObjectIdentifier(obj),
                                                                                PropertyIdentifier.statusFlags)
                         except:  # noqa: E722
-                            sys.stderr.buffer.write(bytes(f"ERROR {device['id']} - {obj}\n", "utf-8"))
+                            # sys.stderr.buffer.write(bytes(f"ERROR {device['id']} - {obj}\n", "utf-8"))
+                            # traceback.print_exc()
                             continue
 
                         pointSpec = {"id": obj,
@@ -78,4 +81,5 @@ class PointManager(object):
 
                     print(deviceSpec)
                 except:  # noqa: E722
+                    traceback.print_exc()
                     continue

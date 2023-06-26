@@ -59,9 +59,10 @@ class DeviceManager(object):
                     property = await self.app.read_property(iamDict[id], id, str(prop))
                     propDict[str(prop)] = property
                 except BaseException as be:
-                    propDict[str(prop)] = None
+                    propDict[str(prop)] = ""
                     print(
-                        f"ERROR {dt.datetime.now(tz=self.localDevice.tz)} - {id} - {be}")
+                        f"ERROR {dt.datetime.now(tz=self.localDevice.tz)} - {id} - {be} - {str(prop)}")
+
             device = BacnetDevice(id, str(iamDict[id]), propDict)
             device.obj["last synced"] = dt.datetime.now(tz=self.localDevice.tz)
             self.devices.add(device)
@@ -145,7 +146,8 @@ class DeviceManager(object):
             for fd in foundDevices:
                 await self.mongo.replaceDevice(fd.obj, self.mongo.getDb(), "Devices")
         else:
-            raise Exception("An error is causing Device Mgr to not be able to compare number of devices discovered vs the ones in the database...!")
+            raise Exception("An error is causing Device Mgr to not be able to \
+                            compare number of devices discovered vs the ones in the database...!")
 
         self.devices.clear()
         print("commit to database completed...")

@@ -2,9 +2,12 @@
 import sys
 import json
 import pytz
+# import traceback
 import configparser
+from collections import OrderedDict
 from bacpypes3.pdu import IPv4Address
 from bacpypes3.local.device import DeviceObject
+from bacpypes3.basetypes import Segmentation
 
 
 class BacnetDevice():
@@ -18,15 +21,18 @@ class BacnetDevice():
     def __init__(
             self, id, addr: str, props: dict, doNormalize=True) -> None:
         if doNormalize:
-            self.__properties: dict = {p: self.normalize(str(p),
-                                                         props[p]) for p in props}
+            self.__properties = OrderedDict(
+                sorted(OrderedDict({p: self.normalize(str(p), props[p]) for p in props}).items(),
+                       key=lambda x: x[0])
+            )
         else:
-            self.__properties = props
+            self.__properties = OrderedDict(
+                sorted(OrderedDict(props).items(), key=lambda x: x[0]))
 
-        self.obj: dict = {"id": str(id),
-                          "address": addr,
-                          "last synced": None,
-                          "properties": self.__properties}
+        self.obj = OrderedDict({"id": str(id),
+                                "address": addr,
+                                "last synced": None,
+                                "properties": self.__properties})
 
     @property
     def deviceId(self):
@@ -207,9 +213,8 @@ class BacnetDevice():
             else:
                 normalized["value"] = str(value)
                 return normalized
-        except Exception as e:
-            sys.stderr.buffer.write(bytes(f"{e}\n", "utf-8"))
-            return ""
+        except:  # noqa: E722
+            return "not-supported"
 
 
 class LocalBacnetDevice:
@@ -227,7 +232,7 @@ class LocalBacnetDevice:
         self.objId = self.config.get("device", "objectIdentifier")
         self.objName = self.config.get("device", "objectName")
         self.maxApduLength = self.config.get("network", "maxApduLengthAccepted")
-        self.segmentation = self.config.get("network", "segmentationSupported")
+        self.segmentation = Segmentation.segmentedBoth
         self.maxSegments = self.config.get("network", "maxSegmentsAccepted")
         self.vendorId = self.config.get("device", "vendorIdentifier")
         self.localAddress = self.config.get("network", "interface")
@@ -244,7 +249,7 @@ class LocalBacnetDevice:
             address: {self.localAddress}
             name: {self.objName}
             max apdu: {self.maxApduLength}
-            segmentation: {self.segmentation}
+            segmentation: {str(self.segmentation)}
             max segments: {self.maxSegments}
             vendor id: {self.vendorId}
             timezone: {self.tz}
