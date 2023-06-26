@@ -79,7 +79,7 @@ class DeviceManager(object):
                  3.3 write all devices with a device id larger than the id found in step 3.1
         """
         print("commit to database has started...")
-        devices = list(self.devices)
+        devices = sorted(list(self.devices))
         docCount = await self.mongo.getDocumentCount(self.mongo.getDb(),
                                                      "Devices")
         print(f"Doc Count: {docCount}")
@@ -116,14 +116,14 @@ class DeviceManager(object):
             newDevices = \
                 list(filter(lambda device:
                             int(str(device.deviceId).split(',')[1]) in list(newDeviceIds),
-                            list(self.devices)))
+                            sorted(list(self.devices))))
             for nd in newDevices:
                 await self.mongo.writeDevice(nd.obj, self.mongo.getDb(), "Devices")
 
             foundDevices = \
                 list(filter(lambda device:
                             int(str(device.deviceId).split(',')[1]) in list(foundDeviceIds),
-                            list(self.devices)))
+                            sorted(list(self.devices))))
             for fd in foundDevices:
                 await self.mongo.replaceDevice(fd.obj, self.mongo.getDb(), "Devices")
 
@@ -142,7 +142,7 @@ class DeviceManager(object):
             foundDevices = \
                 list(filter(lambda device:
                             int(str(device.deviceId).split(',')[1]) in list(foundDeviceIds),
-                            list(self.devices)))
+                            sorted(list(self.devices))))
             for fd in foundDevices:
                 await self.mongo.replaceDevice(fd.obj, self.mongo.getDb(), "Devices")
         else:
