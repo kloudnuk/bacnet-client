@@ -3,6 +3,7 @@ import time
 import datetime as dt
 from Device import LocalBacnetDevice, BacnetDevice
 from bacpypes3.pdu import Address
+from bacpypes3.apdu import AbortPDU, AbortReason
 from MongoClient import Mongodb
 
 
@@ -58,10 +59,19 @@ class DeviceManager(object):
                 try:
                     property = await self.app.read_property(iamDict[id], id, str(prop))
                     propDict[str(prop)] = property
-                except BaseException as be:
-                    propDict[str(prop)] = ""
-                    print(
-                        f"ERROR {dt.datetime.now(tz=self.localDevice.tz)} - {id} - {be} - {str(prop)}")
+                except AbortPDU as e:
+                    print(f"{id} - {prop} - {e}")
+                    if e.apduAbortRejectReason == AbortReason.segmentationNotSupported:
+                        if str(prop) == "object-list":
+                            object_list = []
+                            list_length = await self.app.read_property(
+                                iamDict[id], id, "object-list", array_index=0)
+                            for i in range(list_length):
+                                object_id = await self.app.read_property(
+                                    iamDict[id], id, "object-list", array_index=i + 1
+                                )
+                                object_list.append(object_id)
+                            propDict["object-list"] = object_list
 
             device = BacnetDevice(id, str(iamDict[id]), propDict)
             device.obj["last synced"] = dt.datetime.now(tz=self.localDevice.tz)

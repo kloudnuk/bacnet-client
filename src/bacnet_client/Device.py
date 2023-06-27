@@ -149,6 +149,7 @@ class BacnetDevice():
 
             elif property == "object-list":
                 normalized["value"] = [str(v) for v in value]
+                sorted(normalized["value"])
                 return normalized
 
             elif property == "utc-time-synchronization-recipients":
@@ -163,10 +164,12 @@ class BacnetDevice():
 
             elif property == "protocol-object-types-supported":
                 normalized["value"] = str(value).split(";")
+                sorted(normalized["value"])
                 return normalized
 
             elif property == "protocol-services-supported":
                 normalized["value"] == str(value).split(";")
+                sorted(normalized["value"])
                 return normalized
 
             elif property == "time-synchronization-recipients":
