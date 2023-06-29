@@ -1,6 +1,7 @@
 
-import time
+import asyncio
 import datetime as dt
+import configparser
 from Device import LocalBacnetDevice, BacnetDevice
 from bacpypes3.pdu import Address
 from bacpypes3.apdu import AbortPDU, AbortReason
@@ -8,7 +9,6 @@ from MongoClient import Mongodb
 
 
 class DeviceManager(object):
-
     """
     Bacnet Device Discovery Service; the service issues who-is
     broadcast messages gathering a list of bacnet devices currently live
@@ -26,19 +26,23 @@ class DeviceManager(object):
         self.highLimit = 4194303
         self.address = Address("*")
         self.mongo = Mongodb()
+        self.config = configparser.ConfigParser()
 
     def __new__(cls):
         if DeviceManager.__instance is None:
             DeviceManager.__instance = object.__new__(cls)
         return DeviceManager.__instance
 
-    async def run(self, interval: int, app):
+    async def run(self, app):
         if self.app is None:
             self.app = app
-        while True:
-            await self.discover()
-            await self.commit()
-            time.sleep(interval * 60)
+
+        self.config.read("local-device.ini")
+        interval = int(self.config.get("device-discovery", "interval"))
+
+        await self.discover()
+        await self.commit()
+        await asyncio.sleep(interval * 60)
 
     async def discover(self):
         """ Sends a who-is broadcast to the subnet and stores a list of responses. It parses

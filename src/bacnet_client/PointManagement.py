@@ -1,5 +1,7 @@
 
 import traceback
+import configparser
+import asyncio
 from collections import OrderedDict
 from Device import LocalBacnetDevice
 from MongoClient import Mongodb
@@ -10,7 +12,6 @@ from bacpypes3.basetypes import PropertyIdentifier, StatusFlags
 
 
 class PointManager(object):
-
     """
     Bacnet Point Discovery Service: the service issues who-has messages and creates
     a collection of points on the database for each device already on the database.
@@ -19,6 +20,8 @@ class PointManager(object):
     __instance = None
 
     def __init__(self) -> None:
+        self.app: NormalApplication = None
+        self.config = configparser.ConfigParser()
         self.points: OrderedDict = OrderedDict()
         self.localDevice = LocalBacnetDevice()
         self.lowLimit = 0
@@ -30,32 +33,32 @@ class PointManager(object):
             PointManager.__instance = object.__new__(cls)
         return PointManager.__instance
 
-    async def getPointSpec(self, obj, device, app: NormalApplication):
+    async def getPointSpec(self, obj, device):
 
-        pointName = await app.read_property(Address(device["address"]),
-                                            ObjectIdentifier(obj),
-                                            PropertyIdentifier.objectName)
+        pointName = await self.app.read_property(Address(device["address"]),
+                                                 ObjectIdentifier(obj),
+                                                 PropertyIdentifier.objectName)
         pointValue = 0
         pointStatus = None
         pointUnits = None
         try:
-            pointValue = await app.read_property(Address(device["address"]),
-                                                 ObjectIdentifier(obj),
-                                                 PropertyIdentifier.presentValue)
+            pointValue = await self.app.read_property(Address(device["address"]),
+                                                      ObjectIdentifier(obj),
+                                                      PropertyIdentifier.presentValue)
         except:  # noqa: E722
             pass
 
         try:
-            pointStatus: StatusFlags = await app.read_property(Address(device["address"]),
-                                                               ObjectIdentifier(obj),
-                                                               PropertyIdentifier.statusFlags)
+            pointStatus: StatusFlags = await self.app.read_property(Address(device["address"]),
+                                                                    ObjectIdentifier(obj),
+                                                                    PropertyIdentifier.statusFlags)
         except:  # noqa: E722
             pass
 
         try:
-            pointUnits = await app.read_property(Address(device["address"]),
-                                                 ObjectIdentifier(obj),
-                                                 PropertyIdentifier.units)
+            pointUnits = await self.app.read_property(Address(device["address"]),
+                                                      ObjectIdentifier(obj),
+                                                      PropertyIdentifier.units)
         except:  # noqa: E722
             pass
 
@@ -66,7 +69,7 @@ class PointManager(object):
                                  "units": str(pointUnits)})
         return pointSpec
 
-    async def getDeviceSpec(self, device, app: NormalApplication):
+    async def getDeviceSpec(self, device):
         deviceSpec = OrderedDict({"name": device["properties"]["device-name"]["value"],
                                   "id": device["id"],
                                   "address": device["address"],
@@ -88,14 +91,14 @@ class PointManager(object):
 
             for i, obj in enumerate(objList):
                 points: OrderedDict = deviceSpec["points"]
-                points[i] = await self.getPointSpec(obj, device, app)
+                points[i] = await self.getPointSpec(obj, device)
         else:
             raise ValueError(f"ERROR object-list is not available in {device}...")
 
         print(deviceSpec)
         return deviceSpec
 
-    async def discover(self, app: NormalApplication):
+    async def discover(self):
         docCount = await self.mongo.getDocumentCount(self.mongo.getDb(),
                                                      "Devices")
         if docCount > 0:
@@ -108,7 +111,17 @@ class PointManager(object):
                                                                  '_id': 0})
             for device in dbPayload:
                 try:
-                    await self.getDeviceSpec(device, app)
+                    await self.getDeviceSpec(device)
                 except:  # noqa: E722
                     traceback.print_exc()
                     continue
+
+    async def run(self, app):
+        if self.app is None:
+            self.app = app
+
+        self.config.read("local-device.ini")
+        interval = int(self.config.get("device-discovery", "interval"))
+
+        await self.discover()
+        await asyncio.sleep(interval * 60)
