@@ -29,14 +29,15 @@ async def main():
     """
     bacapp = Bacapp()
 
-    # Declare service instances
-    devmgr = dm.DeviceManager()
-    ptmgr = pm.PointManager()
     try:
         while True:
             # Run services
-            await devmgr.run(bacapp.app)
-            await ptmgr.run(bacapp.app)
+            output = await asyncio.gather(
+                dm.DeviceManager().run(bacapp.app),
+                pm.PointManager().run(bacapp.app)
+            )
+            print(output)
+            await asyncio.sleep(1)
     finally:
         bacapp.app.close()
 
