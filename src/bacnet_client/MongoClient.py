@@ -55,29 +55,29 @@ class Mongodb():
         n = await db[collectionName].count_documents({})
         return n
 
-    async def writeDevice(self, device: dict, db, collectionName: str):
+    async def writeDocument(self, document: dict, db, collectionName: str):
         result = None
         try:
-            result = await db[collectionName].insert_one(device)
+            result = await db[collectionName].insert_one(document)
             print(repr(result.inserted_id))
         except Exception as e:
             sys.stderr.buffer.write(bytes(f"{e}: {result}\n", "utf-8"))
 
-    async def writeDevices(self, devices: list, db, collectionName: str):
+    async def writeDocuments(self, documents: list, db, collectionName: str):
         result_set = None
         try:
-            result_set = await db[collectionName].insert_many(devices)
+            result_set = await db[collectionName].insert_many(documents)
             print(f"Number of devices added: {len(result_set.inserted_ids)}")
         except Exception as e:
             sys.stderr.buffer.write(bytes(f"{e}: {result_set}\n", "utf-8"))
 
-    async def replaceDevice(self, device: dict, db, collectionName: str):
-        result = await db[collectionName].find_one_and_replace({'id': device["id"]},
-                                                               device)
+    async def replaceDocument(self, document: dict, db, collectionName: str):
+        result = await db[collectionName].find_one_and_replace({'id': document["id"]},
+                                                               document)
         print(f"{result}")
 
-    async def findDevices(self, db, collectionName: str, query=None, projection=None):
-        devices = []
+    async def findDocuments(self, db, collectionName: str, query=None, projection=None):
+        documents = []
         async for dev in db[collectionName].find(query, projection=projection):
-            devices.append(dev)
-        return devices
+            documents.append(dev)
+        return documents

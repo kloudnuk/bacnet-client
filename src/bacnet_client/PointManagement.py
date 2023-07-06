@@ -22,7 +22,7 @@ class PointManager(object):
     def __init__(self) -> None:
         self.app: NormalApplication = None
         self.config = configparser.ConfigParser()
-        self.points: OrderedDict = OrderedDict()
+        self.points = []
         self.localDevice = LocalBacnetDevice()
         self.lowLimit = 0
         self.highLimit = 4194303
@@ -32,6 +32,16 @@ class PointManager(object):
         if PointManager.__instance is None:
             PointManager.__instance = object.__new__(cls)
         return PointManager.__instance
+
+    async def run_discover(self, app):
+        if self.app is None:
+            self.app = app
+
+        self.config.read("local-device.ini")
+        interval = int(self.config.get("device-discovery", "interval"))
+
+        await self.discover()
+        await asyncio.sleep(interval * 60)
 
     async def getPointSpec(self, obj, device):
 
@@ -99,29 +109,25 @@ class PointManager(object):
         return deviceSpec
 
     async def discover(self):
+        """
+        """
+        print("discovery started...")
         docCount = await self.mongo.getDocumentCount(self.mongo.getDb(),
                                                      "Devices")
         if docCount > 0:
-            dbPayload = await self.mongo.findDevices(self.mongo.getDb(),
-                                                     "Devices",
-                                                     query={},
-                                                     projection={'id': 1,
-                                                                 'address': 1,
-                                                                 'properties': 1,
-                                                                 '_id': 0})
+            dbPayload = await self.mongo.findDocuments(self.mongo.getDb(),
+                                                       "Devices",
+                                                       query={},
+                                                       projection={'id': 1,
+                                                                   'address': 1,
+                                                                   'properties': 1,
+                                                                   '_id': 0})
             for device in dbPayload:
                 try:
-                    await self.getDeviceSpec(device)
+                    self.points.append(await self.getDeviceSpec(device))
                 except:  # noqa: E722
                     traceback.print_exc()
                     continue
 
-    async def run(self, app):
-        if self.app is None:
-            self.app = app
-
-        self.config.read("local-device.ini")
-        interval = int(self.config.get("device-discovery", "interval"))
-
-        await self.discover()
-        await asyncio.sleep(interval * 60)
+    async def commit(self, context):
+        print("TODO")

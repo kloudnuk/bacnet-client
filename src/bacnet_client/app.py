@@ -34,7 +34,7 @@ async def main():
             # Run services
             output = await asyncio.gather(
                 dm.DeviceManager().run(bacapp.app),
-                pm.PointManager().run(bacapp.app)
+                pm.PointManager().run_discover(bacapp.app)
             )
             print(output)
             await asyncio.sleep(1)
