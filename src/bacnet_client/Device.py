@@ -29,49 +29,49 @@ class BacnetDevice():
             self.__properties = OrderedDict(
                 sorted(OrderedDict(props).items(), key=lambda x: x[0]))
 
-        self.obj = OrderedDict({"id": str(id),
-                                "address": addr,
-                                "last synced": None,
-                                "properties": self.__properties})
+        self.spec = OrderedDict({"id": str(id),
+                                 "address": addr,
+                                 "last synced": None,
+                                 "properties": self.__properties})
 
     @property
     def deviceId(self):
-        return self.obj["id"]
+        return self.spec["id"]
 
     @property
     def name(self):
-        return self.obj["device-name"]
+        return self.spec["device-name"]
 
     @property
     def address(self):
-        return self.obj["address"]
+        return self.spec["address"]
 
     @property
     def lastSynced(self):
-        return self.obj["last synced"]
+        return self.spec["last synced"]
 
     @property
     def properties(self):
-        return self.obj["properties"]
+        return self.spec["properties"]
 
     def __str__(self) -> str:
-        return json.dumps(self.obj)
+        return json.dumps(self.spec)
 
     def __bytes__(self) -> bytes:
-        databytes = str(self.obj).encode('utf-8')
+        databytes = str(self.spec).encode('utf-8')
         datalen = len(databytes).to_bytes(2, byteorder='big')
         return datalen + databytes
 
     def __dir__(self) -> dict:
-        return list(self.obj.keys())
+        return list(self.spec.keys())
 
     def __hash__(self):
         return hash((self.deviceId, self.address))
 
     def __add__(self, other) -> None:
         if type(other) == BacnetDevice:
-            for p in self.obj:
-                self.obj[p] = other.obj[p]
+            for p in self.spec:
+                self.spec[p] = other.obj[p]
         else:
             raise Exception("Cannot merge (+) with a type other than BacnetDevice")
 

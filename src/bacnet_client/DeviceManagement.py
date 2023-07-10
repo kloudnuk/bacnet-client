@@ -64,7 +64,7 @@ class DeviceManager(object):
                     property = await self.app.read_property(iamDict[id], id, str(prop))
                     propDict[str(prop)] = property
                 except AbortPDU as e:
-                    print(f"{id} - {prop} - {e}")
+                    # print(f"{id} - {prop} - {e}")
                     if e.apduAbortRejectReason == AbortReason.segmentationNotSupported:
                         if str(prop) == "object-list":
                             object_list = []
@@ -77,8 +77,8 @@ class DeviceManager(object):
                                 object_list.append(object_id)
                             propDict["object-list"] = object_list
 
-            device = BacnetDevice(id, str(iamDict[id]), propDict)
-            device.obj["last synced"] = dt.datetime.now(tz=self.localDevice.tz)
+            device: BacnetDevice = BacnetDevice(id, str(iamDict[id]), propDict)
+            device.spec["last synced"] = dt.datetime.now(tz=self.localDevice.tz)
             self.devices.add(device)
         print("discovery completed...")
 
@@ -100,13 +100,13 @@ class DeviceManager(object):
         print(f"Device Count: {len(devices)}")
         if docCount == 0:
             await self.mongo.writeDocuments(
-                [device.obj for device in devices],
+                [device.spec for device in devices],
                 self.mongo.getDb(),
                 "Devices"
             )
         elif docCount == len(devices):
             for device in devices:
-                await self.mongo.replaceDocument(device.obj,
+                await self.mongo.replaceDocument(device.spec,
                                                  self.mongo.getDb(),
                                                  "Devices")
 
@@ -132,14 +132,14 @@ class DeviceManager(object):
                             int(str(device.deviceId).split(',')[1]) in list(newDeviceIds),
                             sorted(list(self.devices))))
             for nd in newDevices:
-                await self.mongo.writeDocument(nd.obj, self.mongo.getDb(), "Devices")
+                await self.mongo.writeDocument(nd.spec, self.mongo.getDb(), "Devices")
 
             foundDevices = \
                 list(filter(lambda device:
                             int(str(device.deviceId).split(',')[1]) in list(foundDeviceIds),
                             sorted(list(self.devices))))
             for fd in foundDevices:
-                await self.mongo.replaceDocument(fd.obj, self.mongo.getDb(), "Devices")
+                await self.mongo.replaceDocument(fd.spec, self.mongo.getDb(), "Devices")
 
         elif docCount > len(devices):
             dbPayload = await self.mongo.findDocuments(self.mongo.getDb(),
@@ -158,7 +158,7 @@ class DeviceManager(object):
                             int(str(device.deviceId).split(',')[1]) in list(foundDeviceIds),
                             sorted(list(self.devices))))
             for fd in foundDevices:
-                await self.mongo.replaceDocument(fd.obj, self.mongo.getDb(), "Devices")
+                await self.mongo.replaceDocument(fd.spec, self.mongo.getDb(), "Devices")
         else:
             raise Exception("An error is causing Device Mgr to not be able to \
                             compare number of devices discovered vs the ones in the database...!")

@@ -5,10 +5,8 @@ import asyncio
 from collections import OrderedDict
 from Device import LocalBacnetDevice
 from MongoClient import Mongodb
+import Point as pt
 from bacpypes3.ipv4.app import NormalApplication
-from bacpypes3.pdu import Address
-from bacpypes3.primitivedata import ObjectIdentifier
-from bacpypes3.basetypes import PropertyIdentifier, StatusFlags
 
 
 class PointManager(object):
@@ -33,7 +31,7 @@ class PointManager(object):
             PointManager.__instance = object.__new__(cls)
         return PointManager.__instance
 
-    async def run_discover(self, app):
+    async def run(self, app):
         if self.app is None:
             self.app = app
 
@@ -42,42 +40,6 @@ class PointManager(object):
 
         await self.discover()
         await asyncio.sleep(interval * 60)
-
-    async def getPointSpec(self, obj, device):
-
-        pointName = await self.app.read_property(Address(device["address"]),
-                                                 ObjectIdentifier(obj),
-                                                 PropertyIdentifier.objectName)
-        pointValue = 0
-        pointStatus = None
-        pointUnits = None
-        try:
-            pointValue = await self.app.read_property(Address(device["address"]),
-                                                      ObjectIdentifier(obj),
-                                                      PropertyIdentifier.presentValue)
-        except:  # noqa: E722
-            pass
-
-        try:
-            pointStatus: StatusFlags = await self.app.read_property(Address(device["address"]),
-                                                                    ObjectIdentifier(obj),
-                                                                    PropertyIdentifier.statusFlags)
-        except:  # noqa: E722
-            pass
-
-        try:
-            pointUnits = await self.app.read_property(Address(device["address"]),
-                                                      ObjectIdentifier(obj),
-                                                      PropertyIdentifier.units)
-        except:  # noqa: E722
-            pass
-
-        pointSpec = OrderedDict({"id": obj,
-                                 "name": pointName,
-                                 "value": round(pointValue, 4),
-                                 "status": str(pointStatus),
-                                 "units": str(pointUnits)})
-        return pointSpec
 
     async def getDeviceSpec(self, device):
         deviceSpec = OrderedDict({"name": device["properties"]["device-name"]["value"],
@@ -101,7 +63,22 @@ class PointManager(object):
 
             for i, obj in enumerate(objList):
                 points: OrderedDict = deviceSpec["points"]
-                points[i] = await self.getPointSpec(obj, device)
+                if "analog" in str(obj):
+                    point = pt.AnalogPoint(self.app, self.localDevice, device, obj)
+                    await point.build()
+                    points[i] = point.spec
+                elif "binary" in str(obj):
+                    point = pt.BinaryPoint(self.app, self.localDevice, device, obj)
+                    await point.build()
+                    points[i] = point.spec
+                elif "multi-state" in str(obj):
+                    point = pt.MsvPoint(self.app, self.localDevice, device, obj)
+                    await point.build()
+                    points[i] = point.spec
+                else:
+                    point = pt.BacnetPoint(self.app, self.localDevice, device, obj)
+                    await point.build()
+                    points[i] = point.spec
         else:
             raise ValueError(f"ERROR object-list is not available in {device}...")
 
