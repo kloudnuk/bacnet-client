@@ -1,7 +1,7 @@
 
 import sys
 import configparser
-import datetime
+import datetime as dt
 from pymongo.server_api import ServerApi
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -12,6 +12,7 @@ class Mongodb():
     MongoDB client singleton connects to the database server, and performs all CRUD operations
     """
 
+    __ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
     __instance = None
 
     def __init__(self) -> None:
@@ -33,7 +34,7 @@ class Mongodb():
     async def pingServer(self):
         try:
             await self.client.admin.command('ping')
-            print(f"mongodb server ping ok...{datetime.datetime.now()}")
+            print(f"mongodb server ping ok...{dt.datetime.now().strftime(Mongodb.__ISO8601)}")
             return True
         except Exception as e:
             sys.stderr.buffer.write(bytes(f"{e}\n", "utf-8"))
@@ -72,12 +73,11 @@ class Mongodb():
             sys.stderr.buffer.write(bytes(f"{e}: {result_set}\n", "utf-8"))
 
     async def replaceDocument(self, document: dict, db, collectionName: str):
-        result = await db[collectionName].find_one_and_replace({'id': document["id"]},
-                                                               document)
-        print(f"{result}")
+        await db[collectionName].find_one_and_replace({'id': document["id"]},
+                                                      document)
 
     async def findDocuments(self, db, collectionName: str, query=None, projection=None):
         documents = []
-        async for dev in db[collectionName].find(query, projection=projection):
-            documents.append(dev)
+        async for doc in db[collectionName].find(query, projection=projection):
+            documents.append(doc)
         return documents

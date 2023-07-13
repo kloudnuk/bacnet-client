@@ -12,6 +12,8 @@ class BacnetPoint():
     """
     """
 
+    __ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
+
     def __init__(self,
                  app: NormalApplication,
                  localDevice: LocalBacnetDevice,
@@ -47,13 +49,14 @@ class BacnetPoint():
             self.spec.clear()
             self.spec.update({
                 "id": self.obj,
+                "device": [self.device["properties"]["device-name"]["value"], self.device["id"]],
                 "name": name,
                 "value": value,
                 "status": str(status),
                 "reliability": str(reliability),
                 "description": str(description),
                 "last synced": dt.datetime.now(tz=self.localDevice.tz)
-                                          .strftime("%Y-%m-%dT%H:%M:%S%z")
+                                          .strftime(BacnetPoint.__ISO8601)
             })
         except Exception:
             print(f"ERROR - \
@@ -84,8 +87,9 @@ class AnalogPoint(BacnetPoint):
             self.spec["maxVal"] = maxVal
             self.spec["minVal"] = minVal
         except Exception as e:
-            print(f"ERROR - \
-                  {dt.datetime.now(tz=self.localDevice.tz)} - \
+            errorTime = dt.datetime.now(tz=self.localDevice.tz) \
+                                   .strftime(super().__ISO8601)
+            print(f"ERROR - {errorTime} - \
                     Could not read all data for analog point - {self.obj} -  {e}")
             traceback.print_exc()
 
@@ -113,8 +117,9 @@ class BinaryPoint(BacnetPoint):
             self.spec["elapsed-active-time"] = elapsed_active
 
         except Exception as e:
-            print(F"ERROR - \
-                  {dt.datetime.now(tz=self.localDevice.tz)} - \
+            errorTime = dt.datetime.now(tz=self.localDevice.tz) \
+                                   .strftime(super().__ISO8601)
+            print(F"ERROR - {errorTime} - \
                     Could not read all data for analog point - {self.obj} -  {e}")
             traceback.print_exc()
 
@@ -137,7 +142,8 @@ class MsvPoint(BacnetPoint):
             self.spec["state-labels"] = state_text
 
         except Exception as e:
-            print(F"ERROR - \
-                  {dt.datetime.now(tz=self.localDevice.tz)} - \
+            errorTime = dt.datetime.now(tz=self.localDevice.tz) \
+                                   .strftime(super().__ISO8601)
+            print(F"ERROR - {errorTime} - \
                     Could not read all data for analog point - {self.obj} -  {e}")
             traceback.print_exc()

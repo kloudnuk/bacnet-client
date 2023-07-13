@@ -4,7 +4,7 @@ from bacpypes3.ipv4.app import NormalApplication
 from Device import LocalBacnetDevice
 
 # import services
-# import bacnet_client.DeviceManagement as dm
+import bacnet_client.DeviceManagement as dm
 import bacnet_client.PointManagement as pm
 
 
@@ -28,15 +28,16 @@ async def main():
     Run or schedule all your services from this entry-point script.
     """
     bacapp = Bacapp()
+    deviceMgr = dm.DeviceManager()
+    pointMgr = pm.PointManager()
 
     try:
         while True:
             # Run services
-            output = await asyncio.gather(
-                # dm.DeviceManager().run(bacapp.app),
-                pm.PointManager().run(bacapp.app)
+            await asyncio.gather(
+                deviceMgr.run(bacapp.app),
+                pointMgr.run_discovery(bacapp.app)
             )
-            print(output)
             await asyncio.sleep(1)
     finally:
         bacapp.app.close()

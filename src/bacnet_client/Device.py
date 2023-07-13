@@ -131,7 +131,7 @@ class BacnetDevice():
     def normalize(self, property, value):
         try:
             normalized: dict = {"value": "",
-                                "type": str(type(value))[8:-2]}
+                                "type": str(type(value))[18:-2]}
             if property == "restart-notification-recipients":
                 try:
                     normalized["value"] = \

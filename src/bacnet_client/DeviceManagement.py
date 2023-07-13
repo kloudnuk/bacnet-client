@@ -1,9 +1,11 @@
 
 import asyncio
+import traceback
 import datetime as dt
 import configparser
 from Device import LocalBacnetDevice, BacnetDevice
 from bacpypes3.pdu import Address
+from bacpypes3.primitivedata import ObjectIdentifier
 from bacpypes3.apdu import AbortPDU, AbortReason
 from MongoClient import Mongodb
 
@@ -16,6 +18,7 @@ class DeviceManager(object):
     of bacnet objects the device is a parent to.
     """
 
+    __ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
     __instance = None
 
     def __init__(self) -> None:
@@ -49,7 +52,11 @@ class DeviceManager(object):
         through the responses and creates a set of bacnet device definition objects with the
         corresponding response information.
         """
-        print("discovery started...")
+        startTime = dt.datetime.now(tz=self.localDevice.tz) \
+                               .strftime(DeviceManager.__ISO8601)
+
+        print(f"INFO - {startTime} -  device discovery started...")
+
         iams = await self.app.who_is(self.lowLimit,
                                      self.highLimit,
                                      self.address)
@@ -71,16 +78,21 @@ class DeviceManager(object):
                             list_length = await self.app.read_property(
                                 iamDict[id], id, "object-list", array_index=0)
                             for i in range(list_length):
-                                object_id = await self.app.read_property(
+                                object_id: ObjectIdentifier = await self.app.read_property(
                                     iamDict[id], id, "object-list", array_index=i + 1
                                 )
                                 object_list.append(object_id)
+
                             propDict["object-list"] = object_list
 
             device: BacnetDevice = BacnetDevice(id, str(iamDict[id]), propDict)
-            device.spec["last synced"] = dt.datetime.now(tz=self.localDevice.tz)
+
+            endTime = dt.datetime.now(tz=self.localDevice.tz) \
+                                 .strftime(DeviceManager.__ISO8601)
+
+            device.spec["last synced"] = endTime
             self.devices.add(device)
-        print("discovery completed...")
+        print(f"INFO - {endTime} - device discovery completed...")
 
     async def commit(self):
         """Check to see if the database collection is empty or has less devices than the in-memory device list.
@@ -92,7 +104,10 @@ class DeviceManager(object):
                  3.2 replace all devices with a device id smaller than the id found in step 3.1
                  3.3 write all devices with a device id larger than the id found in step 3.1
         """
-        print("commit to database has started...")
+        startTime = dt.datetime.now(tz=self.localDevice.tz) \
+                               .strftime(DeviceManager.__ISO8601)
+
+        print(f"INFO - {startTime} - device commit to database has started...")
         devices = sorted(list(self.devices))
         docCount = await self.mongo.getDocumentCount(self.mongo.getDb(),
                                                      "Devices")
@@ -160,8 +175,11 @@ class DeviceManager(object):
             for fd in foundDevices:
                 await self.mongo.replaceDocument(fd.spec, self.mongo.getDb(), "Devices")
         else:
-            raise Exception("An error is causing Device Mgr to not be able to \
-                            compare number of devices discovered vs the ones in the database...!")
+            traceback.print_exc()
+            raise Exception("ERROR - could not commit devices to the database...!")
 
         self.devices.clear()
-        print("commit to database completed...")
+
+        endTime = dt.datetime.now(tz=self.localDevice.tz) \
+                             .strftime(DeviceManager.__ISO8601)
+        print(f"INFO - {endTime} - device commit to database completed...")
