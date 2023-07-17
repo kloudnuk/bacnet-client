@@ -7,6 +7,7 @@ from collections import OrderedDict
 from Device import LocalBacnetDevice
 from MongoClient import Mongodb
 import Point as pt
+import PointPolling as pp
 from bacpypes3.ipv4.app import NormalApplication
 
 
@@ -21,8 +22,8 @@ class PointManager(object):
 
     def __init__(self) -> None:
         self.app: NormalApplication = None
+        self.poller: pp.PollService = None
         self.config = configparser.ConfigParser()
-        # self.points = []
         self.deviceSpecs = []
         self.localDevice = LocalBacnetDevice()
         self.lowLimit = 0
@@ -34,12 +35,14 @@ class PointManager(object):
             PointManager.__instance = object.__new__(cls)
         return PointManager.__instance
 
-    async def run_discovery(self, app):
+    async def run(self, app, poll_service):
         if self.app is None:
             self.app = app
+        if self.poller is None:
+            self.poller = poll_service
 
         self.config.read("local-device.ini")
-        interval = int(self.config.get("device-discovery", "interval"))
+        interval = int(self.config.get("point-discovery", "interval"))
 
         await self.discover()
         await self.commit()
@@ -64,6 +67,9 @@ class PointManager(object):
                                                                    '_id': 0})
             for device in dbPayload:
                 try:
+                    if not device["id"] in self.poller.queues.keys():
+                        self.poller.create_queue(device["id"])
+
                     deviceSpec = OrderedDict({"name": device["properties"]["device-name"]["value"],
                                               "id": device["id"],
                                               "address": device["address"],
@@ -71,7 +77,6 @@ class PointManager(object):
                                               })
                     pointList = deviceSpec["points"]
                     objListValue = device["properties"]["object-list"]["value"]
-                    # objListType = device["properties"]["object-list"]["type"]
 
                     objList = list(filter(lambda kind: 'analog-value' in kind
                                           or 'analog-input' in kind
@@ -87,22 +92,22 @@ class PointManager(object):
                         if "analog" in str(obj):
                             point = pt.AnalogPoint(self.app, self.localDevice, device, obj)
                             await point.build()
-                            # self.points.append(point)
+                            self.poller.get_queue(device["id"]).put(point)
                             pointList[str(point.obj)] = point.spec
                         elif "binary" in str(obj):
                             point = pt.BinaryPoint(self.app, self.localDevice, device, obj)
                             await point.build()
-                            # self.points.append(point)
+                            self.poller.get_queue(device["id"]).put(point)
                             pointList[str(point.obj)] = point.spec
                         elif "multi-state" in str(obj):
                             point = pt.MsvPoint(self.app, self.localDevice, device, obj)
                             await point.build()
-                            # self.points.append(point)
+                            self.poller.get_queue(device["id"]).put(point)
                             pointList[str(point.obj)] = point.spec
                         else:
                             point = pt.BacnetPoint(self.app, self.localDevice, device, obj)
                             await point.build()
-                            # self.points.append(point)
+                            self.poller.get_queue(device["id"]).put(point)
                             pointList[str(point.obj)] = point.spec
 
                 except:  # noqa: E722
@@ -145,20 +150,11 @@ class PointManager(object):
                     "Points")
         else:
             traceback.print_exc()
-            raise Exception("TODO - 1. (docs > point-lists) -> add/replace \n\
-                            2. (docs < point-lists) -> replace/no-sync")
+            print(f"ERROR - 1. ({docCount} > {len(self.deviceSpecs)}) -> add/replace \n\
+                  2. ({docCount} < {len(self.deviceSpecs)}) -> replace/no-sync")
 
         self.deviceSpecs.clear()
         endTime = dt.datetime.now(tz=self.localDevice.tz) \
                              .strftime(PointManager.__ISO8601)
 
         print(f"INFO - {endTime} -  point commit completed...")
-
-    async def run_polling(self, app):
-        print(f"TODO - {str(app)}")
-
-    async def poll(self):
-        print("TODO")
-
-    async def update(self):
-        print("TODO")

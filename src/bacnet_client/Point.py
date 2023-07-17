@@ -19,10 +19,10 @@ class BacnetPoint():
                  localDevice: LocalBacnetDevice,
                  device: BacnetDevice,
                  obj) -> None:
-        self.spec = OrderedDict()
-        self.app = app
-        self.localDevice = localDevice
-        self.device = device
+        self.spec: OrderedDict = OrderedDict()
+        self.app: NormalApplication = app
+        self.localDevice: LocalBacnetDevice = localDevice
+        self.device: BacnetDevice = device
         self.obj = obj
 
     async def build(self):
@@ -58,6 +58,30 @@ class BacnetPoint():
                 "last synced": dt.datetime.now(tz=self.localDevice.tz)
                                           .strftime(BacnetPoint.__ISO8601)
             })
+        except Exception:
+            print(f"ERROR - \
+                  {dt.datetime.now(tz=self.localDevice.tz)} - \
+                  {self.obj}")
+            traceback.print_exc()
+
+    async def update(self):
+        try:
+            value = await self.app.read_property(Address(self.device["address"]),
+                                                 ObjectIdentifier(self.obj),
+                                                 PropertyIdentifier.presentValue)
+
+            status: StatusFlags = await self.app.read_property(Address(self.device["address"]),
+                                                               ObjectIdentifier(self.obj),
+                                                               PropertyIdentifier.statusFlags)
+
+            reliability: Reliability = await self.app.read_property(Address(self.device["address"]),
+                                                                    ObjectIdentifier(self.obj),
+                                                                    PropertyIdentifier.reliability)
+            self.spec["value"] = value
+            self.spec["status"] = str(status)
+            self.spec["reliability"] = str(reliability)
+            self.spec["last synced"] = dt.datetime.now(tz=self.localDevice.tz) \
+                                                  .strftime(BacnetPoint.__ISO8601)
         except Exception:
             print(f"ERROR - \
                   {dt.datetime.now(tz=self.localDevice.tz)} - \

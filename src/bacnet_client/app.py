@@ -6,6 +6,7 @@ from Device import LocalBacnetDevice
 # import services
 import bacnet_client.DeviceManagement as dm
 import bacnet_client.PointManagement as pm
+import bacnet_client.PointPolling as pp
 
 
 class Bacapp(object):
@@ -29,6 +30,7 @@ async def main():
     """
     bacapp = Bacapp()
     deviceMgr = dm.DeviceManager()
+    pollSrv = pp.PollService()
     pointMgr = pm.PointManager()
 
     try:
@@ -36,7 +38,8 @@ async def main():
             # Run services
             await asyncio.gather(
                 deviceMgr.run(bacapp.app),
-                pointMgr.run_discovery(bacapp.app)
+                pointMgr.run(bacapp.app, pollSrv),
+                pollSrv.run(bacapp.app)
             )
             await asyncio.sleep(1)
     finally:
