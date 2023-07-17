@@ -2,6 +2,7 @@
 import configparser
 import asyncio
 import datetime as dt
+import Point as pt
 from Device import LocalBacnetDevice
 from MongoClient import Mongodb
 from bacpypes3.ipv4.app import NormalApplication
@@ -45,16 +46,17 @@ class PollService(object):
         """
         startTime = dt.datetime.now(tz=self.localDevice.tz) \
                                .strftime(PollService.__ISO8601)
-        print(f"INFO - {startTime} - start polling...")
+        print(f"INFO - {startTime} - point polling started...")
 
         for k, v in self.queues.items():
-            print(f"polling queue: {k}")
+            print(f"\npolling {k}")
             while not v.empty():
-                print((v.get()).spec["name"])
+                point: pt.BacnetPoint = v.get()
+                await point.update()
 
         endTime = dt.datetime.now(tz=self.localDevice.tz) \
                              .strftime(PollService.__ISO8601)
-        print(f"INFO - {endTime} - polling done...")
+        print(f"INFO - {endTime} - point polling completed...")
 
     async def update(self):
         print("TODO")
