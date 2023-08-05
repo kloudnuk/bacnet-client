@@ -2,11 +2,12 @@
 import configparser
 import asyncio
 import datetime as dt
-import Point as pt
+# import Point as pt
 from Device import LocalBacnetDevice
 from MongoClient import Mongodb
 from bacpypes3.ipv4.app import NormalApplication
-from queue import Queue
+from collections import OrderedDict
+# from queue import Queue
 
 
 class PollService(object):
@@ -21,7 +22,7 @@ class PollService(object):
     def __init__(self) -> None:
         self.app: NormalApplication = None
         self.config = configparser.ConfigParser()
-        self.queues = {}
+        self.point_lists = {}
         self.localDevice = LocalBacnetDevice()
         self.mongo = Mongodb()
 
@@ -38,7 +39,6 @@ class PollService(object):
         interval = int(self.config.get("point-polling", "interval"))
 
         await self.poll()
-        # await self.update()
         await asyncio.sleep(interval * 60)
 
     async def poll(self):
@@ -48,23 +48,30 @@ class PollService(object):
                                .strftime(PollService.__ISO8601)
         print(f"INFO - {startTime} - point polling started...")
 
-        for k, v in self.queues.items():
-            print(f"\npolling {k}")
-            while not v.empty():
-                point: pt.BacnetPoint = v.get()
+        for k, v in self.point_lists.items():
+            points: OrderedDict = OrderedDict()
+            for point in v:
                 await point.update()
+                # print(f"\npolling {k}")
+                # print(f"{point.obj} \
+                #       \n{point.spec['value']} \
+                #       \n{point.spec['status']} \
+                #       \n{point.spec['reliability']} \
+                #       \n{point.spec['last synced']}")
+                points[str(point.obj)] = point.spec
+
+            await self.mongo \
+                .updateFields(self.mongo.getDb(), "Points",
+                              {"id": k},
+                              {"points": points})
 
         endTime = dt.datetime.now(tz=self.localDevice.tz) \
                              .strftime(PollService.__ISO8601)
         print(f"INFO - {endTime} - point polling completed...")
 
-    async def update(self):
-        print("TODO")
+    def create_pointList(self, name):
+        self.point_lists[name] = []
+        return self.point_lists[name] 
 
-    def create_queue(self, name):
-        new_queue = Queue()
-        self.queues[name] = new_queue
-        return new_queue
-
-    def get_queue(self, name):
-        return self.queues.get(name, None)
+    def get_pointList(self, name):
+        return self.point_lists.get(name, None)

@@ -81,3 +81,6 @@ class Mongodb():
         async for doc in db[collectionName].find(query, projection=projection):
             documents.append(doc)
         return documents
+
+    async def updateFields(self, db, collectionName: str, query=None, update=None):
+        return await db[collectionName].update_one(query, {'$set': update})

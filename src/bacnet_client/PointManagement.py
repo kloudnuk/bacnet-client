@@ -67,8 +67,8 @@ class PointManager(object):
                                                                    '_id': 0})
             for device in dbPayload:
                 try:
-                    if not device["id"] in self.poller.queues.keys():
-                        self.poller.create_queue(device["id"])
+                    if not device["id"] in self.poller.point_lists.keys():
+                        self.poller.create_pointList(device["id"])
 
                     deviceSpec = OrderedDict({"name": device["properties"]["device-name"]["value"],
                                               "id": device["id"],
@@ -92,22 +92,22 @@ class PointManager(object):
                         if "analog" in str(obj):
                             point = pt.AnalogPoint(self.app, self.localDevice, device, obj)
                             await point.build()
-                            self.poller.get_queue(device["id"]).put(point)
+                            self.poller.get_pointList(device["id"]).append(point)
                             pointList[str(point.obj)] = point.spec
                         elif "binary" in str(obj):
                             point = pt.BinaryPoint(self.app, self.localDevice, device, obj)
                             await point.build()
-                            self.poller.get_queue(device["id"]).put(point)
+                            self.poller.get_pointList(device["id"]).append(point)
                             pointList[str(point.obj)] = point.spec
                         elif "multi-state" in str(obj):
                             point = pt.MsvPoint(self.app, self.localDevice, device, obj)
                             await point.build()
-                            self.poller.get_queue(device["id"]).put(point)
+                            self.poller.get_pointList(device["id"]).append(point)
                             pointList[str(point.obj)] = point.spec
                         else:
                             point = pt.BacnetPoint(self.app, self.localDevice, device, obj)
                             await point.build()
-                            self.poller.get_queue(device["id"]).put(point)
+                            self.poller.get_pointList(device["id"]).append(point)
                             pointList[str(point.obj)] = point.spec
 
                 except:  # noqa: E722
