@@ -103,7 +103,7 @@ class PointManager(object):
                                           or 'multi-state-value' in kind
                                           or 'multi-state-input' in kind
                                           or 'multi-state-output' in kind, objListValue))
-                    
+
                     self.object_graph[device["id"]] = {}
 
                     for i, obj in enumerate(objList):

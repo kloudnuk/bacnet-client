@@ -56,7 +56,13 @@ class PollService(object):
                                .strftime(PollService.__ISO8601)
         print(f"INFO - {startTime} - point polling started...")
 
-        await self.load_pointLists()
+        if len(self.poll_lists) == 0:
+            await self.load_pointLists()
+        else:
+            for k, v in self.poll_lists.items():
+                for point in v:
+                    point.update()
+                    self.points_specs[k] = point.spec
 
         for k, v in self.object_graph.items():
             print(f"\ncommitting poll to db {k}")
@@ -85,11 +91,7 @@ class PollService(object):
                                                      value,
                                                      value["point"])
                     await point.update()
-                    print(f"{point.obj} \
-                            \n{point.spec['value']} \
-                            \n{point.spec['status']} \
-                            \n{point.spec['reliability']} \
-                            \n{point.spec['last synced']}")
+
                     self.poll_lists[k].append(point)
                     self.points_specs[k][point.obj] = point.spec
 
