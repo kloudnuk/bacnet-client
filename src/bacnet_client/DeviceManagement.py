@@ -42,10 +42,15 @@ class DeviceManager(object):
 
         self.config.read("local-device.ini")
         interval = int(self.config.get("device-discovery", "interval"))
+        enable = bool(self.config.get("device-discovery", "enable"))
 
-        await self.discover()
-        await self.commit()
-        await asyncio.sleep(interval * 60)
+        while enable:
+            await self.discover()
+            await self.commit()
+            self.config.read("local-device.ini")
+            interval = int(self.config.get("device-discovery", "interval"))
+            enable = bool(self.config.get("device-discovery", "enable"))
+            await asyncio.sleep(interval * 60)
 
     async def discover(self):
         """ Sends a who-is broadcast to the subnet and stores a list of responses. It parses

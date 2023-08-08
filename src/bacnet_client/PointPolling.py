@@ -1,13 +1,14 @@
 
 import configparser
 import asyncio
+import traceback
+import pickle
 import datetime as dt
-# import Point as pt
 from Device import LocalBacnetDevice
+from Point import BacnetPoint
 from MongoClient import Mongodb
 from bacpypes3.ipv4.app import NormalApplication
 from collections import OrderedDict
-# from queue import Queue
 
 
 class PollService(object):
@@ -22,9 +23,11 @@ class PollService(object):
     def __init__(self) -> None:
         self.app: NormalApplication = None
         self.config = configparser.ConfigParser()
-        self.point_lists = {}
         self.localDevice = LocalBacnetDevice()
         self.mongo = Mongodb()
+        self.object_graph: dict = {}
+        self.poll_lists = OrderedDict()
+        self.points_specs = OrderedDict()
 
     def __new__(cls):
         if PollService.__instance is None:
@@ -37,9 +40,14 @@ class PollService(object):
 
         self.config.read("local-device.ini")
         interval = int(self.config.get("point-polling", "interval"))
+        enable = bool(self.config.get("point-polling", "enable"))
 
-        await self.poll()
-        await asyncio.sleep(interval * 60)
+        while enable:
+            await self.poll()
+            self.config.read("local-device.ini")
+            interval = int(self.config.get("point-polling", "interval"))
+            enable = bool(self.config.get("point-polling", "enable"))
+            await asyncio.sleep(interval * 60)
 
     async def poll(self):
         """
@@ -48,30 +56,45 @@ class PollService(object):
                                .strftime(PollService.__ISO8601)
         print(f"INFO - {startTime} - point polling started...")
 
-        for k, v in self.point_lists.items():
-            points: OrderedDict = OrderedDict()
-            for point in v:
-                await point.update()
-                # print(f"\npolling {k}")
-                # print(f"{point.obj} \
-                #       \n{point.spec['value']} \
-                #       \n{point.spec['status']} \
-                #       \n{point.spec['reliability']} \
-                #       \n{point.spec['last synced']}")
-                points[str(point.obj)] = point.spec
+        await self.load_pointLists()
 
+        for k, v in self.object_graph.items():
+            print(f"\ncommitting poll to db {k}")
             await self.mongo \
                 .updateFields(self.mongo.getDb(), "Points",
                               {"id": k},
-                              {"points": points})
+                              {"points": self.points_specs[k]})
 
         endTime = dt.datetime.now(tz=self.localDevice.tz) \
                              .strftime(PollService.__ISO8601)
         print(f"INFO - {endTime} - point polling completed...")
 
-    def create_pointList(self, name):
-        self.point_lists[name] = []
-        return self.point_lists[name] 
+    async def load_pointLists(self):
+        try:
+            with open('../res/object-graph.pkl', 'rb') as object_graph:
+                self.object_graph: dict = pickle.load(object_graph)
+            for k, v in self.object_graph.items():
+                print(f"\npolling {k}")
+                self.poll_lists[k] = []
+                self.points_specs[k] = OrderedDict()
 
-    def get_pointList(self, name):
-        return self.point_lists.get(name, None)
+                for key, value in self.object_graph[k].items():
+                    print(key)
+                    point: BacnetPoint = BacnetPoint(self.app,
+                                                     self.localDevice,
+                                                     value,
+                                                     value["point"])
+                    await point.update()
+                    print(f"{point.obj} \
+                            \n{point.spec['value']} \
+                            \n{point.spec['status']} \
+                            \n{point.spec['reliability']} \
+                            \n{point.spec['last synced']}")
+                    self.poll_lists[k].append(point)
+                    self.points_specs[k][point.obj] = point.spec
+
+        except:  # noqa: E722
+            print("\n")
+            traceback.print_exc()
+            print(f"ERROR Unable to retrieve object graph from file OR poll or commit poll...! \
+                    {dt.datetime.now(tz=self.localDevice.tz).strftime(PollService.__ISO8601)}")

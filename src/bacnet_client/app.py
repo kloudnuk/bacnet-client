@@ -30,18 +30,17 @@ async def main():
     """
     bacapp = Bacapp()
     deviceMgr = dm.DeviceManager()
-    pollSrv = pp.PollService()
     pointMgr = pm.PointManager()
+    pollSrv = pp.PollService()
 
     try:
-        while True:
-            # Run services
-            await asyncio.gather(
-                deviceMgr.run(bacapp.app),
-                pointMgr.run(bacapp.app, pollSrv),
-                pollSrv.run(bacapp.app)
-            )
-            await asyncio.sleep(1)
+        devMgr_handle = asyncio.create_task(deviceMgr.run(bacapp.app))
+        pointMgr_handle = asyncio.create_task(pointMgr.run(bacapp.app))
+        pollMgr_handle = asyncio.create_task(pollSrv.run(bacapp.app))
+
+        await devMgr_handle
+        await pointMgr_handle
+        await pollMgr_handle
     finally:
         bacapp.app.close()
 

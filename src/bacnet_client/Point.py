@@ -1,7 +1,7 @@
 import datetime as dt
 import traceback
 from collections import OrderedDict
-from Device import LocalBacnetDevice, BacnetDevice
+from Device import LocalBacnetDevice
 from bacpypes3.pdu import Address
 from bacpypes3.primitivedata import ObjectIdentifier
 from bacpypes3.basetypes import PropertyIdentifier, StatusFlags, Reliability
@@ -17,12 +17,12 @@ class BacnetPoint():
     def __init__(self,
                  app: NormalApplication,
                  localDevice: LocalBacnetDevice,
-                 device: BacnetDevice,
+                 edge,
                  obj) -> None:
         self.spec: OrderedDict = OrderedDict()
         self.app: NormalApplication = app
         self.localDevice: LocalBacnetDevice = localDevice
-        self.device: BacnetDevice = device
+        self.device: dict = edge
         self.obj = obj
 
     async def build(self):
@@ -49,7 +49,8 @@ class BacnetPoint():
             self.spec.clear()
             self.spec.update({
                 "id": self.obj,
-                "device": [self.device["properties"]["device-name"]["value"], self.device["id"]],
+                "device": [self.device["name"],
+                           self.device["id"]],
                 "name": name,
                 "value": value,
                 "status": str(status),
