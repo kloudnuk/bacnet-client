@@ -61,7 +61,7 @@ class PollService(object):
         else:
             for k, v in self.poll_lists.items():
                 for point in v:
-                    point.update()
+                    await point.update()
                     self.points_specs[k] = point.spec
 
         for k, v in self.object_graph.items():
@@ -85,7 +85,7 @@ class PollService(object):
                 self.points_specs[k] = OrderedDict()
 
                 for key, value in self.object_graph[k].items():
-                    print(key)
+                    # print(key)
                     point: BacnetPoint = BacnetPoint(self.app,
                                                      self.localDevice,
                                                      value,

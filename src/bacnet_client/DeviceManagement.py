@@ -1,6 +1,6 @@
 
 import asyncio
-import traceback
+import logging
 import datetime as dt
 import configparser
 from Device import LocalBacnetDevice, BacnetDevice
@@ -30,6 +30,7 @@ class DeviceManager(object):
         self.address = Address("*")
         self.mongo = Mongodb()
         self.config = configparser.ConfigParser()
+        self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
         if DeviceManager.__instance is None:
@@ -57,15 +58,12 @@ class DeviceManager(object):
         through the responses and creates a set of bacnet device definition objects with the
         corresponding response information.
         """
-        startTime = dt.datetime.now(tz=self.localDevice.tz) \
-                               .strftime(DeviceManager.__ISO8601)
-
-        print(f"INFO - {startTime} -  device discovery started...")
+        self.logger.info("device discovery started...")
 
         iams = await self.app.who_is(self.lowLimit,
                                      self.highLimit,
                                      self.address)
-        print(f"{len(iams)} BACnet IP devices found...")
+        self.logger.info(f"{len(iams)} BACnet IP devices found...")
         iamDict = {iam.iAmDeviceIdentifier: iam.pduSource for iam in iams}
         for id in iamDict:
             deviceName = await self.app.read_property(iamDict[id], id, "objectName")
@@ -76,7 +74,7 @@ class DeviceManager(object):
                     property = await self.app.read_property(iamDict[id], id, str(prop))
                     propDict[str(prop)] = property
                 except AbortPDU as e:
-                    # print(f"{id} - {prop} - {e}")
+                    self.logger.debug(f"{id} - {prop} - {e}")
                     if e.apduAbortRejectReason == AbortReason.segmentationNotSupported:
                         if str(prop) == "object-list":
                             object_list = []
@@ -97,7 +95,7 @@ class DeviceManager(object):
 
             device.spec["last synced"] = endTime
             self.devices.add(device)
-        print(f"INFO - {endTime} - device discovery completed...")
+        self.logger.info("device discovery completed...")
 
     async def commit(self):
         """Check to see if the database collection is empty or has less devices than the in-memory device list.
@@ -109,15 +107,12 @@ class DeviceManager(object):
                  3.2 replace all devices with a device id smaller than the id found in step 3.1
                  3.3 write all devices with a device id larger than the id found in step 3.1
         """
-        startTime = dt.datetime.now(tz=self.localDevice.tz) \
-                               .strftime(DeviceManager.__ISO8601)
-
-        print(f"INFO - {startTime} - device commit to database has started...")
+        self.logger.info("device commit to database has started...")
         devices = sorted(list(self.devices))
         docCount = await self.mongo.getDocumentCount(self.mongo.getDb(),
                                                      "Devices")
-        print(f"Doc Count: {docCount}")
-        print(f"Device Count: {len(devices)}")
+        self.logger.debug(f"Doc Count: {docCount}")
+        self.logger.info(f"Device Count: {len(devices)}")
         if docCount == 0:
             await self.mongo.writeDocuments(
                 [device.spec for device in devices],
@@ -142,10 +137,10 @@ class DeviceManager(object):
             newDeviceIds = memDeviceIds - dbDeviceIds
             foundDeviceIds = memDeviceIds & dbDeviceIds
 
-            print(f"devices discovered: {memDeviceIds}")
-            print(f"devices pulled from db: {dbDeviceIds}")
-            print(f"new devices to push to db: {newDeviceIds}")
-            print(f"devices found to update on the db: {foundDeviceIds}")
+            self.logger.info(f"devices discovered: {memDeviceIds}")
+            self.logger.info(f"devices pulled from db: {dbDeviceIds}")
+            self.logger.info(f"new devices to push to db: {newDeviceIds}")
+            self.logger.info(f"devices found to update on the db: {foundDeviceIds}")
 
             newDevices = \
                 list(filter(lambda device:
@@ -170,9 +165,9 @@ class DeviceManager(object):
             memDeviceIds = set([int(str(d.deviceId).split(',')[1]) for d in devices])
             dbDeviceIds = set([int(str(d["id"]).split(',')[1]) for d in dbPayload])
             foundDeviceIds = memDeviceIds & dbDeviceIds
-            print(f"devices discovered: {memDeviceIds}")
-            print(f"devices pulled from db: {dbDeviceIds}")
-            print(f"devices found to update on the db: {foundDeviceIds}")
+            self.logger.info(f"devices discovered: {memDeviceIds}")
+            self.logger.info(f"devices pulled from db: {dbDeviceIds}")
+            self.logger.info(f"devices found to update on the db: {foundDeviceIds}")
             foundDevices = \
                 list(filter(lambda device:
                             int(str(device.deviceId).split(',')[1]) in list(foundDeviceIds),
@@ -180,11 +175,9 @@ class DeviceManager(object):
             for fd in foundDevices:
                 await self.mongo.replaceDocument(fd.spec, self.mongo.getDb(), "Devices")
         else:
-            traceback.print_exc()
+            self.logger.error("could not commit devices to the database...!", stack_info=True)
             raise Exception("ERROR - could not commit devices to the database...!")
 
         self.devices.clear()
 
-        endTime = dt.datetime.now(tz=self.localDevice.tz) \
-                             .strftime(DeviceManager.__ISO8601)
-        print(f"INFO - {endTime} - device commit to database completed...")
+        self.logger.info("device commit to database completed...")
