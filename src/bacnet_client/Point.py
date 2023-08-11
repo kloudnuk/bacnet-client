@@ -10,6 +10,10 @@ from bacpypes3.ipv4.app import NormalApplication
 
 class BacnetPoint():
     """
+    The base class for bacnet point objects of 3 diferent kinds, analog, binary, and multi-state.
+    The constructor receives the point's corresponding edge from the object-graph, it then knows 
+    how to build its own properties by making native bacnet calls. The point object can also 
+    fetch its own value updates from the network.
     """
 
     __ISO8601 = "%Y-%m-%dT%H:%M:%S%z"

@@ -2,11 +2,13 @@
 import asyncio
 import logging
 import queue
+import json
+import re
 import threading as thread
 from logging.handlers import QueueHandler
 from bacpypes3.ipv4.app import NormalApplication
 from Device import LocalBacnetDevice
-# from MongoClient import Mongodb
+from MongoClient import Mongodb
 
 # import services
 import bacnet_client.DeviceManagement as dm
@@ -29,17 +31,38 @@ class Bacapp(object):
         return Bacapp.__instance
 
 
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_data = {
+            'log': record.name,
+            'timestamp': self.formatTime(record, self.datefmt),
+            'level': record.levelname,
+            'message': record.getMessage(),
+            'module': record.module,
+            'line': record.lineno
+        }
+        return json.dumps(log_data, ensure_ascii=False)
+
+
 def log(q):
-    # mongo = Mongodb()
+    mongo = Mongodb()
+    loop = asyncio.new_event_loop()
     while True:
         try:
             if q.empty() is not True:
                 record = q.get()
+                m = re.search("\\{.+\\}", str(record))
+                mongo_record: dict = json.loads(m.group(0))
                 if record is None:
+                    loop.close()
                     break
                 else:
-                    # TODO - send logs to mongo db's own logging collection (one per database) - FORMAT PROPERLY
-                    print(record)
+                    print(m.group(0))
+                    coro = mongo.writeDocument(mongo_record,
+                                               mongo.getDb(),
+                                               "Logs")
+                    print(str(coro))
+
         except Exception as e:
             print(e)
 
@@ -67,15 +90,15 @@ async def main():
         devMgr_task.cancel()
         pointMgr_task.cancel()
         pollMgr_task.cancel()
+        logger.info("Client application stopping:")
 
 if __name__ == "__main__":
 
     ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
+    loop = asyncio.get_event_loop()
     logQ = queue.Queue()
     logProducer = QueueHandler(logQ)
-    logFormat = (logging.Formatter(datefmt=ISO8601,
-                                   fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-    logProducer.setFormatter(logFormat)
+    logProducer.setFormatter(JsonFormatter(datefmt=ISO8601))
     logger = logging.getLogger('ClientLog')
     logger.addHandler(logProducer)
     logger.setLevel(logging.DEBUG)

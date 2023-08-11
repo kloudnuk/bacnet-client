@@ -3,7 +3,6 @@ import configparser
 import asyncio
 import logging
 import pickle
-import datetime as dt
 from Device import LocalBacnetDevice
 from Point import BacnetPoint
 from MongoClient import Mongodb
@@ -17,7 +16,6 @@ class PollService(object):
     a collection of points on the database for each device already on the database.
     """
 
-    __ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
     __instance = None
 
     def __init__(self) -> None:
@@ -57,9 +55,7 @@ class PollService(object):
         polling service parses the object graph and loads point object updates to the mongo
         database on a user defined time interval
         """
-        startTime = dt.datetime.now(tz=self.localDevice.tz) \
-                               .strftime(PollService.__ISO8601)
-        self.logger.info(f"{startTime} - point polling started...")
+        self.logger.info("point polling started...")
 
         await self.load_pointLists()
 
@@ -69,10 +65,7 @@ class PollService(object):
                 .updateFields(self.mongo.getDb(), "Points",
                               {"id": k},
                               {"points": self.points_specs[k]})
-
-        endTime = dt.datetime.now(tz=self.localDevice.tz) \
-                             .strftime(PollService.__ISO8601)
-        self.logger.info(f"INFO - {endTime} - point polling completed...")
+        self.logger.info("point polling completed...")
 
     async def load_pointLists(self):
         try:
@@ -95,5 +88,4 @@ class PollService(object):
                     self.points_specs[k][point.obj] = point.spec
 
         except:  # noqa: E722
-            self.logger.critical(f"ERROR Unable to retrieve object graph from file OR poll or commit poll...! \
-                    {dt.datetime.now(tz=self.localDevice.tz).strftime(PollService.__ISO8601)}")
+            self.logger.critical("ERROR Unable to retrieve object graph from file OR poll or commit poll...!")

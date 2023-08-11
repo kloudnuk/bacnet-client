@@ -2,7 +2,6 @@
 import sys
 import configparser
 import logging
-import datetime as dt
 from pymongo.server_api import ServerApi
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -13,7 +12,6 @@ class Mongodb():
     MongoDB client singleton connects to the database server, and performs all CRUD operations
     """
 
-    __ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
     __instance = None
 
     def __init__(self) -> None:
@@ -36,7 +34,7 @@ class Mongodb():
     async def pingServer(self):
         try:
             await self.client.admin.command('ping')
-            self.logger.info(f"mongodb server ping ok...{dt.datetime.now().strftime(Mongodb.__ISO8601)}")
+            self.logger.info("mongodb server ping ok...")
             return True
         except Exception as e:
             sys.stderr.buffer.write(bytes(f"{e}\n", "utf-8"))

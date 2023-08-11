@@ -3,7 +3,6 @@ import configparser
 import pickle
 import logging
 import asyncio
-import datetime as dt
 from collections import OrderedDict
 from Device import LocalBacnetDevice
 from MongoClient import Mongodb
@@ -18,7 +17,6 @@ class PointManager(object):
     a collection of points on the database for each device already on the database.
     """
 
-    __ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
     __og_fp = '../res/object-graph.pkl'
     __instance = None
 
@@ -57,11 +55,11 @@ class PointManager(object):
 
     async def discover(self):
         """
+        Discovers listed bacnet devices objects filtering for points, trends, alarms, and schedules.
+        It then creates instance objects process them and sends output data specs to the database.
         """
-        startTime = dt.datetime.now(tz=self.localDevice.tz) \
-                               .strftime(PointManager.__ISO8601)
 
-        self.logger.info(f"{startTime} -  point discovery started...")
+        self.logger.info("point discovery started...")
         docCount = await self.mongo.getDocumentCount(self.mongo.getDb(),
                                                      "Devices")
         if docCount > 0:
@@ -77,8 +75,7 @@ class PointManager(object):
                 with open(PointManager.__og_fp, 'wb') as object_graph:
                     object_graph.flush()
             except:  # noqa: E722
-                self.logger.critical(f"ERROR Unable to persist object graph to file...! \
-                        {dt.datetime.now(tz=self.localDevice.tz).strftime(PointManager.__ISO8601)}")
+                self.logger.critical("ERROR Unable to persist object graph to file...!")
 
             for device in dbPayload:
                 try:
@@ -135,27 +132,20 @@ class PointManager(object):
                         try:
                             pickle.dump(self.object_graph, object_graph)
                         except:  # noqa: E722
-                            self.logger.critical(f"ERROR Unable to append {deviceSpec['id']} object graph to file...! \
-                                    {dt.datetime.now(tz=self.localDevice.tz).strftime(PointManager.__ISO8601)}")
+                            self.logger.critical("ERROR Unable to append {deviceSpec['id']} object graph to file...!")
 
                 except:  # noqa: E722
-                    errorTime = dt.datetime.now(tz=self.localDevice.tz).strftime(PointManager.__ISO8601)
                     self.logger.critical(f"ERROR object-list is not available in \
-                            {errorTime} - \
                             {device['properties']['device-name']['value']}")
                     continue
 
                 self.deviceSpecs.append(deviceSpec)
 
-        endTime = dt.datetime.now(tz=self.localDevice.tz) \
-                             .strftime(PointManager.__ISO8601)
-        self.logger.info(f"INFO - {endTime} -  point discovery completed...")
+        self.logger.info("point discovery completed...")
 
     async def commit(self):
-        startTime = dt.datetime.now(tz=self.localDevice.tz) \
-                               .strftime(PointManager.__ISO8601)
 
-        self.logger.info(f"{startTime} - points commit to database has started...")
+        self.logger.info("points commit to database has started...")
 
         docCount = await self.mongo.getDocumentCount(self.mongo.getDb(),
                                                      "Points")
@@ -180,7 +170,5 @@ class PointManager(object):
 
         self.deviceSpecs.clear()
         self.object_graph.clear()
-        endTime = dt.datetime.now(tz=self.localDevice.tz) \
-                             .strftime(PointManager.__ISO8601)
 
-        self.logger.info(f"INFO - {endTime} -  point commit completed...")
+        self.logger.info("point commit completed...")
