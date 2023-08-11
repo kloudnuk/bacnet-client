@@ -34,15 +34,18 @@ async def main():
     pollSrv = pp.PollService()
 
     try:
-        devMgr_handle = asyncio.create_task(deviceMgr.run(bacapp.app))
-        pointMgr_handle = asyncio.create_task(pointMgr.run(bacapp.app))
-        pollMgr_handle = asyncio.create_task(pollSrv.run(bacapp.app))
+        devMgr_task = asyncio.create_task(deviceMgr.run(bacapp.app))
+        pointMgr_task = asyncio.create_task(pointMgr.run(bacapp.app))
+        pollMgr_task = asyncio.create_task(pollSrv.run(bacapp.app))
 
-        await devMgr_handle
-        await pointMgr_handle
-        await pollMgr_handle
+        await devMgr_task
+        await pointMgr_task
+        await pollMgr_task
     finally:
         bacapp.app.close()
+        devMgr_task.cancel()
+        pointMgr_task.cancel()
+        pollMgr_task.cancel()
 
 if __name__ == "__main__":
     asyncio.run(main())

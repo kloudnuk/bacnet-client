@@ -51,18 +51,16 @@ class PollService(object):
 
     async def poll(self):
         """
+        The point polling manager relies on the point manager to build an object graph
+        of device-point relationships which gets serialized into a pickle file. The
+        polling service parses the object graph and loads point object updates to the mongo
+        database on a user defined time interval
         """
         startTime = dt.datetime.now(tz=self.localDevice.tz) \
                                .strftime(PollService.__ISO8601)
         print(f"INFO - {startTime} - point polling started...")
 
-        if len(self.poll_lists) == 0:
-            await self.load_pointLists()
-        else:
-            for k, v in self.poll_lists.items():
-                for point in v:
-                    point.update()
-                    self.points_specs[k] = point.spec
+        await self.load_pointLists()
 
         for k, v in self.object_graph.items():
             print(f"\ncommitting poll to db {k}")
