@@ -1,7 +1,7 @@
 
-import traceback
 import configparser
 import pickle
+import logging
 import asyncio
 import datetime as dt
 from collections import OrderedDict
@@ -32,6 +32,7 @@ class PointManager(object):
         self.lowLimit = 0
         self.highLimit = 4194303
         self.mongo = Mongodb()
+        self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
         if PointManager.__instance is None:
@@ -60,7 +61,7 @@ class PointManager(object):
         startTime = dt.datetime.now(tz=self.localDevice.tz) \
                                .strftime(PointManager.__ISO8601)
 
-        print(f"INFO - {startTime} -  point discovery started...")
+        self.logger.info(f"{startTime} -  point discovery started...")
         docCount = await self.mongo.getDocumentCount(self.mongo.getDb(),
                                                      "Devices")
         if docCount > 0:
@@ -76,9 +77,7 @@ class PointManager(object):
                 with open(PointManager.__og_fp, 'wb') as object_graph:
                     object_graph.flush()
             except:  # noqa: E722
-                print("\n")
-                traceback.print_exc()
-                print(f"ERROR Unable to persist object graph to file...! \
+                self.logger.critical(f"ERROR Unable to persist object graph to file...! \
                         {dt.datetime.now(tz=self.localDevice.tz).strftime(PointManager.__ISO8601)}")
 
             for device in dbPayload:
@@ -136,16 +135,12 @@ class PointManager(object):
                         try:
                             pickle.dump(self.object_graph, object_graph)
                         except:  # noqa: E722
-                            print("\n")
-                            traceback.print_exc()
-                            print(f"ERROR Unable to append {deviceSpec['id']} object graph to file...! \
+                            self.logger.critical(f"ERROR Unable to append {deviceSpec['id']} object graph to file...! \
                                     {dt.datetime.now(tz=self.localDevice.tz).strftime(PointManager.__ISO8601)}")
 
                 except:  # noqa: E722
-                    print("\n")
-                    traceback.print_exc()
                     errorTime = dt.datetime.now(tz=self.localDevice.tz).strftime(PointManager.__ISO8601)
-                    print(f"ERROR object-list is not available in \
+                    self.logger.critical(f"ERROR object-list is not available in \
                             {errorTime} - \
                             {device['properties']['device-name']['value']}")
                     continue
@@ -154,18 +149,18 @@ class PointManager(object):
 
         endTime = dt.datetime.now(tz=self.localDevice.tz) \
                              .strftime(PointManager.__ISO8601)
-        print(f"INFO - {endTime} -  point discovery completed...")
+        self.logger.info(f"INFO - {endTime} -  point discovery completed...")
 
     async def commit(self):
         startTime = dt.datetime.now(tz=self.localDevice.tz) \
                                .strftime(PointManager.__ISO8601)
 
-        print(f"INFO - {startTime} - points commit to database has started...")
+        self.logger.info(f"{startTime} - points commit to database has started...")
 
         docCount = await self.mongo.getDocumentCount(self.mongo.getDb(),
                                                      "Points")
-        print(f"doc count: {docCount}")
-        print(f"point lists to database: {len(list(self.deviceSpecs))}")
+        self.logger.info(f"doc count: {docCount}")
+        self.logger.info(f"point lists to database: {len(list(self.deviceSpecs))}")
 
         if docCount == 0:
             await self.mongo.writeDocuments(
@@ -180,8 +175,7 @@ class PointManager(object):
                     self.mongo.getDb(),
                     "Points")
         else:
-            traceback.print_exc()
-            print(f"ERROR - 1. ({docCount} > {len(self.deviceSpecs)}) -> add/replace \n\
+            self.logger.error(f"ERROR - 1. ({docCount} > {len(self.deviceSpecs)}) -> add/replace \n\
                   2. ({docCount} < {len(self.deviceSpecs)}) -> replace/no-sync")
 
         self.deviceSpecs.clear()
@@ -189,4 +183,4 @@ class PointManager(object):
         endTime = dt.datetime.now(tz=self.localDevice.tz) \
                              .strftime(PointManager.__ISO8601)
 
-        print(f"INFO - {endTime} -  point commit completed...")
+        self.logger.info(f"INFO - {endTime} -  point commit completed...")

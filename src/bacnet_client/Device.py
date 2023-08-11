@@ -2,7 +2,6 @@
 import sys
 import json
 import pytz
-# import traceback
 import configparser
 from collections import OrderedDict
 from bacpypes3.pdu import IPv4Address

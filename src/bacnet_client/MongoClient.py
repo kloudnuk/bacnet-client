@@ -1,6 +1,7 @@
 
 import sys
 import configparser
+import logging
 import datetime as dt
 from pymongo.server_api import ServerApi
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -25,6 +26,7 @@ class Mongodb():
                                tlsCertificateKeyFile=self.config
                                .get("mongodb",
                                     "certpath"), server_api=ServerApi('1'))
+        self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
         if Mongodb.__instance is None:
@@ -34,7 +36,7 @@ class Mongodb():
     async def pingServer(self):
         try:
             await self.client.admin.command('ping')
-            print(f"mongodb server ping ok...{dt.datetime.now().strftime(Mongodb.__ISO8601)}")
+            self.logger.info(f"mongodb server ping ok...{dt.datetime.now().strftime(Mongodb.__ISO8601)}")
             return True
         except Exception as e:
             sys.stderr.buffer.write(bytes(f"{e}\n", "utf-8"))
@@ -46,7 +48,7 @@ class Mongodb():
             dbName = self.config.get("mongodb", "dbname")
             return self.client[dbName]
         except Exception as e:
-            sys.stderr.buffer.write(bytes(f"{e}\n", "utf-8"))
+            self.logger.critical(f"{e}")
             return None
 
     def getCollection(self, colName: str):
@@ -60,17 +62,17 @@ class Mongodb():
         result = None
         try:
             result = await db[collectionName].insert_one(document)
-            print(repr(result.inserted_id))
+            self.logger.debug(repr(result.inserted_id))
         except Exception as e:
-            sys.stderr.buffer.write(bytes(f"{e}: {result}\n", "utf-8"))
+            self.logger.error(f"{e}")
 
     async def writeDocuments(self, documents: list, db, collectionName: str):
         result_set = None
         try:
             result_set = await db[collectionName].insert_many(documents)
-            print(f"Number of devices added: {len(result_set.inserted_ids)}")
+            self.logger.debug(f"Number of documentss added: {len(result_set.inserted_ids)}")
         except Exception as e:
-            sys.stderr.buffer.write(bytes(f"{e}: {result_set}\n", "utf-8"))
+            self.logger.error(f"{e}")
 
     async def replaceDocument(self, document: dict, db, collectionName: str):
         await db[collectionName].find_one_and_replace({'id': document["id"]},

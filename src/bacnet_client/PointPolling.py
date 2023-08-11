@@ -1,7 +1,7 @@
 
 import configparser
 import asyncio
-import traceback
+import logging
 import pickle
 import datetime as dt
 from Device import LocalBacnetDevice
@@ -28,6 +28,7 @@ class PollService(object):
         self.object_graph: dict = {}
         self.poll_lists = OrderedDict()
         self.points_specs = OrderedDict()
+        self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
         if PollService.__instance is None:
@@ -51,21 +52,19 @@ class PollService(object):
 
     async def poll(self):
         """
+        The point polling manager relies on the point manager to build an object graph
+        of device-point relationships which gets serialized into a pickle file. The
+        polling service parses the object graph and loads point object updates to the mongo
+        database on a user defined time interval
         """
         startTime = dt.datetime.now(tz=self.localDevice.tz) \
                                .strftime(PollService.__ISO8601)
-        print(f"INFO - {startTime} - point polling started...")
+        self.logger.info(f"{startTime} - point polling started...")
 
-        if len(self.poll_lists) == 0:
-            await self.load_pointLists()
-        else:
-            for k, v in self.poll_lists.items():
-                for point in v:
-                    await point.update()
-                    self.points_specs[k] = point.spec
+        await self.load_pointLists()
 
         for k, v in self.object_graph.items():
-            print(f"\ncommitting poll to db {k}")
+            self.logger.debug(f"\ncommitting poll to db {k}")
             await self.mongo \
                 .updateFields(self.mongo.getDb(), "Points",
                               {"id": k},
@@ -73,19 +72,19 @@ class PollService(object):
 
         endTime = dt.datetime.now(tz=self.localDevice.tz) \
                              .strftime(PollService.__ISO8601)
-        print(f"INFO - {endTime} - point polling completed...")
+        self.logger.info(f"INFO - {endTime} - point polling completed...")
 
     async def load_pointLists(self):
         try:
             with open('../res/object-graph.pkl', 'rb') as object_graph:
                 self.object_graph: dict = pickle.load(object_graph)
             for k, v in self.object_graph.items():
-                print(f"\npolling {k}")
+                self.logger.info(f"\npolling {k}")
                 self.poll_lists[k] = []
                 self.points_specs[k] = OrderedDict()
 
                 for key, value in self.object_graph[k].items():
-                    # print(key)
+                    self.logger.debug(key)
                     point: BacnetPoint = BacnetPoint(self.app,
                                                      self.localDevice,
                                                      value,
@@ -96,7 +95,5 @@ class PollService(object):
                     self.points_specs[k][point.obj] = point.spec
 
         except:  # noqa: E722
-            print("\n")
-            traceback.print_exc()
-            print(f"ERROR Unable to retrieve object graph from file OR poll or commit poll...! \
+            self.logger.critical(f"ERROR Unable to retrieve object graph from file OR poll or commit poll...! \
                     {dt.datetime.now(tz=self.localDevice.tz).strftime(PollService.__ISO8601)}")

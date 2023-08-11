@@ -1,5 +1,5 @@
 import datetime as dt
-import traceback
+import logging
 from collections import OrderedDict
 from Device import LocalBacnetDevice
 from bacpypes3.pdu import Address
@@ -24,6 +24,7 @@ class BacnetPoint():
         self.localDevice: LocalBacnetDevice = localDevice
         self.device: dict = edge
         self.obj = obj
+        self.logger = logging.getLogger('ClientLog')
 
     async def build(self):
         try:
@@ -60,10 +61,7 @@ class BacnetPoint():
                                           .strftime(BacnetPoint.__ISO8601)
             })
         except Exception:
-            print(f"ERROR - \
-                  {dt.datetime.now(tz=self.localDevice.tz)} - \
-                  {self.obj}")
-            traceback.print_exc()
+            self.logger.error(f"failed to build point object {self.obj}")
 
     async def update(self):
         try:
@@ -84,10 +82,8 @@ class BacnetPoint():
             self.spec["last synced"] = dt.datetime.now(tz=self.localDevice.tz) \
                                                   .strftime(BacnetPoint.__ISO8601)
         except Exception:
-            print(f"ERROR - \
-                  {dt.datetime.now(tz=self.localDevice.tz)} - \
+            self.logger.error(f"{dt.datetime.now(tz=self.localDevice.tz)} - \
                   {self.obj}")
-            traceback.print_exc()
 
 
 class AnalogPoint(BacnetPoint):
@@ -114,9 +110,8 @@ class AnalogPoint(BacnetPoint):
         except Exception as e:
             errorTime = dt.datetime.now(tz=self.localDevice.tz) \
                                    .strftime(super().__ISO8601)
-            print(f"ERROR - {errorTime} - \
+            self.logger.error(f"ERROR - {errorTime} - \
                     Could not read all data for analog point - {self.obj} -  {e}")
-            traceback.print_exc()
 
 
 class BinaryPoint(BacnetPoint):
@@ -144,9 +139,8 @@ class BinaryPoint(BacnetPoint):
         except Exception as e:
             errorTime = dt.datetime.now(tz=self.localDevice.tz) \
                                    .strftime(super().__ISO8601)
-            print(F"ERROR - {errorTime} - \
+            self.logger.error(F"{errorTime} - \
                     Could not read all data for analog point - {self.obj} -  {e}")
-            traceback.print_exc()
 
 
 class MsvPoint(BacnetPoint):
@@ -169,6 +163,5 @@ class MsvPoint(BacnetPoint):
         except Exception as e:
             errorTime = dt.datetime.now(tz=self.localDevice.tz) \
                                    .strftime(super().__ISO8601)
-            print(F"ERROR - {errorTime} - \
+            self.logger.error(f"{errorTime} - \
                     Could not read all data for analog point - {self.obj} -  {e}")
-            traceback.print_exc()

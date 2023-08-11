@@ -38,6 +38,7 @@ def log(q):
                 if record is None:
                     break
                 else:
+                    # TODO - send logs to mongo db's own logging collection (one per database) - FORMAT PROPERLY
                     print(record)
         except Exception as e:
             print(e)
@@ -86,6 +87,6 @@ if __name__ == "__main__":
                                             daemon=True)
         log_consumer_thread.start()
     finally:
-        print("logging consumer thread ended...!")
+        logger.debug("logger thread started")
 
     asyncio.run(main())
