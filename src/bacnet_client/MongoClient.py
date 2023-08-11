@@ -57,10 +57,8 @@ class Mongodb():
         return n
 
     async def writeDocument(self, document: dict, db, collectionName: str):
-        result = None
         try:
-            result = await db[collectionName].insert_one(document)
-            self.logger.debug(repr(result.inserted_id))
+            await db[collectionName].insert_one(document)
         except Exception as e:
             self.logger.error(f"{e}")
 

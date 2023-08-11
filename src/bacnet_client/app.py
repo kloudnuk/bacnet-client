@@ -4,7 +4,6 @@ import logging
 import queue
 import json
 import re
-import threading as thread
 from logging.handlers import QueueHandler
 from bacpypes3.ipv4.app import NormalApplication
 from Device import LocalBacnetDevice
@@ -44,27 +43,26 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_data, ensure_ascii=False)
 
 
-def log(q):
+async def log(q):
     mongo = Mongodb()
-    loop = asyncio.new_event_loop()
     while True:
         try:
             if q.empty() is not True:
                 record = q.get()
                 m = re.search("\\{.+\\}", str(record))
                 mongo_record: dict = json.loads(m.group(0))
+
                 if record is None:
-                    loop.close()
                     break
                 else:
                     print(m.group(0))
-                    coro = mongo.writeDocument(mongo_record,
-                                               mongo.getDb(),
-                                               "Logs")
-                    print(str(coro))
-
+                    await mongo.writeDocument(mongo_record,
+                                              mongo.getDb(),
+                                              "Logs")
         except Exception as e:
             print(e)
+
+        await asyncio.sleep(1)
 
 
 async def main():
@@ -73,43 +71,39 @@ async def main():
     """
 
     try:
+        ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
+        loop = asyncio.get_running_loop()
+        logQ = queue.Queue()
+        logProducer = QueueHandler(logQ)
+        logProducer.setFormatter(JsonFormatter(datefmt=ISO8601))
+        logger = logging.getLogger('ClientLog')
+        logger.addHandler(logProducer)
+        logger.setLevel(logging.DEBUG)
+
         bacapp = Bacapp()
         deviceMgr = dm.DeviceManager()
         pointMgr = pm.PointManager()
         pollSrv = pp.PollService()
 
-        devMgr_task = asyncio.create_task(deviceMgr.run(bacapp.app))
-        pointMgr_task = asyncio.create_task(pointMgr.run(bacapp.app))
-        pollMgr_task = asyncio.create_task(pollSrv.run(bacapp.app))
+        devMgr_task = loop.create_task(deviceMgr.run(bacapp.app))
+        pointMgr_task = loop.create_task(pointMgr.run(bacapp.app))
+        pollMgr_task = loop.create_task(pollSrv.run(bacapp.app))
+        logger_task = loop.create_task(log(logQ))
 
         await devMgr_task
         await pointMgr_task
         await pollMgr_task
+        await logger_task
+
     finally:
         bacapp.app.close()
         devMgr_task.cancel()
         pointMgr_task.cancel()
         pollMgr_task.cancel()
         logger.info("Client application stopping:")
+        logger.info(None)
+        logger_task.cancel()
 
 if __name__ == "__main__":
-
-    ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
-    loop = asyncio.get_event_loop()
-    logQ = queue.Queue()
-    logProducer = QueueHandler(logQ)
-    logProducer.setFormatter(JsonFormatter(datefmt=ISO8601))
-    logger = logging.getLogger('ClientLog')
-    logger.addHandler(logProducer)
-    logger.setLevel(logging.DEBUG)
-
-    try:
-        log_consumer_thread = thread.Thread(target=log,
-                                            name='log_consumer',
-                                            args=(logQ, ),
-                                            daemon=True)
-        log_consumer_thread.start()
-    finally:
-        logger.debug("logger thread started")
 
     asyncio.run(main())
