@@ -41,14 +41,14 @@ class DeviceManager(object):
         if self.app is None:
             self.app = app
 
-        self.config.read("local-device.ini")
+        self.config.read("../res/local-device.ini")
         interval = int(self.config.get("device-discovery", "interval"))
         enable = bool(self.config.get("device-discovery", "enable"))
 
         while enable:
             await self.discover()
             await self.commit()
-            self.config.read("local-device.ini")
+            self.config.read("../res/local-device.ini")
             interval = int(self.config.get("device-discovery", "interval"))
             enable = bool(self.config.get("device-discovery", "enable"))
             await asyncio.sleep(interval * 60)

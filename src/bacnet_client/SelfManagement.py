@@ -4,8 +4,7 @@ import configparser
 
 class LocalManager(object):
     """
-    Manage device to cloud registration, updates, notifications, security,
-    and command/control pipeline.
+    Manage bacnet device settings from cloud based UI.
     """
 
     __instance = None

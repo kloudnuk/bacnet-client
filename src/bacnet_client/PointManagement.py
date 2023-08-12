@@ -41,14 +41,14 @@ class PointManager(object):
         if self.app is None:
             self.app = app
 
-        self.config.read("local-device.ini")
+        self.config.read("../res/local-device.ini")
         interval = int(self.config.get("point-discovery", "interval"))
         enable = bool(self.config.get("point-discovery", "enable"))
 
         while enable:
             await self.discover()
             await self.commit()
-            self.config.read("local-device.ini")
+            self.config.read("../res/local-device.ini")
             interval = int(self.config.get("point-discovery", "interval"))
             enable = bool(self.config.get("point-discovery", "enable"))
             await asyncio.sleep(interval * 60)

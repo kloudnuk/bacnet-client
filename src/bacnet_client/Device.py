@@ -230,7 +230,7 @@ class LocalBacnetDevice:
 
     def __init__(self) -> None:
         self.config = configparser.ConfigParser()
-        self.config.read('local-device.ini')
+        self.config.read('../res/local-device.ini')
         self.objId = self.config.get("device", "objectIdentifier")
         self.objName = self.config.get("device", "objectName")
         self.maxApduLength = self.config.get("network", "maxApduLengthAccepted")
