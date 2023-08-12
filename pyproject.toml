@@ -12,7 +12,6 @@ bacpypes3 = {git = "https://github.com/viteski/BACpypes3.git", develop = true}
 ifaddr = "^0.2.0"
 pymongo = "^4.3.3"
 motor = "^3.1.2"
-multiprocess = "^0.70.14"
 pytest = "^7.3.1"
 pytz = "^2023.3"
 

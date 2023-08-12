@@ -12,7 +12,7 @@ steps:
 - task: Bash@3
   inputs:
     targetType: 'inline'
-    script: 'echo $(Build.SourcesDirectory) & poetry run python3.10 -m zipapp src/bacnet_client -m "app:main"'
+    script: 'python3.10 -m zipapp src -m "bacnet_client.app:main"'
     workingDirectory: '$(Build.SourcesDirectory)'
   displayName: 'build_exec'
 
