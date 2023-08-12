@@ -37,13 +37,13 @@ class PollService(object):
         if self.app is None:
             self.app = app
 
-        self.config.read("local-device.ini")
+        self.config.read("../res/local-device.ini")
         interval = int(self.config.get("point-polling", "interval"))
         enable = bool(self.config.get("point-polling", "enable"))
 
         while enable:
             await self.poll()
-            self.config.read("local-device.ini")
+            self.config.read("../res/local-device.ini")
             interval = int(self.config.get("point-polling", "interval"))
             enable = bool(self.config.get("point-polling", "enable"))
             await asyncio.sleep(interval * 60)

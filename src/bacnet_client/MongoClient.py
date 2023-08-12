@@ -16,7 +16,7 @@ class Mongodb():
 
     def __init__(self) -> None:
         self.config = configparser.ConfigParser()
-        self.config.read('local-device.ini')
+        self.config.read('../res/local-device.ini')
         self.uri: str = str(self.config.get("mongodb", "connectionString"))
         self.client: AsyncIOMotorClient = \
             AsyncIOMotorClient(self.uri,
@@ -42,7 +42,7 @@ class Mongodb():
 
     def getDb(self):
         try:
-            self.config.read('local-device.ini')
+            self.config.read('../res/local-device.ini')
             dbName = self.config.get("mongodb", "dbname")
             return self.client[dbName]
         except Exception as e:
