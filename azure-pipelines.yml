@@ -12,4 +12,5 @@ steps:
 - task: Bash@3
   inputs:
     filePath: 'build.sh'
+    arguments: '$(ADO__BACNETCLIENT_PAT) $(EON17_PASS)'
   displayName: 'build_exec'

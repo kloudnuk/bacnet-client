@@ -1,6 +1,7 @@
 #!/bin/bash
 
-source build/ado.env
+ado_bacnetclient_pat=$1
+pass=$2
 
 function unlock_keyring() {
     export "$(echo -n "${pass}" | gnome-keyring-daemon --replace --unlock)"
