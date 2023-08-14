@@ -1,6 +1,11 @@
 #!/bin/bash
 
-export ado_bacnetclient_pat
+source build/ado.env
+
+function unlock_keyring() {
+    export "$(echo -n "${pass}" | gnome-keyring-daemon --replace --unlock)"
+    unset "${pass}"
+}
 
 # apt update | apt upgrade -y
 
@@ -54,7 +59,7 @@ az artifacts universal publish \
     --scope project \
     --feed databot \
     --name bacnet-client \
-    --version 0.0.1 \
+    --version 0.0.4 \
     --description "a bacnet-ip client to discover devices and their data to sample in real-time and collect time series on a cloud service." \
     --path dist
 
