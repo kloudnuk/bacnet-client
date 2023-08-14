@@ -48,6 +48,8 @@ fi
 find src/res -type f -print0 |
     tar czvf dist/res.tar.gz --null -T -
 
+unlock_keyring
+
 poetry install --without test --sync
 poetry build -f wheel
 
@@ -59,7 +61,7 @@ az artifacts universal publish \
     --scope project \
     --feed databot \
     --name bacnet-client \
-    --version 0.0.4 \
+    --version 0.0.5 \
     --description "a bacnet-ip client to discover devices and their data to sample in real-time and collect time series on a cloud service." \
     --path dist
 
