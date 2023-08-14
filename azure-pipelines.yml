@@ -1,3 +1,14 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- azure-pipelines
+
+pool: Default
+
+steps:
 - task: CmdLine@2
   inputs:
     script: |
@@ -69,4 +80,7 @@
       az devops logout --organization https://dev.azure.com/vtsmolinski/
       
       # TODO - Sign artifacts with a code signing certificate.
-      # TODO - Add code to the downstream to cut a account-specific mongodb mTLS certificate an add it to the res folder.
+      # TODO - Add code to the downstream to cut a account-specific mongodb mTLS certificate an add it to the res folder.  inputs:
+    filePath: 'build.sh'
+    arguments: '$(ADO__BACNETCLIENT_PAT) $(EON17_PASS)'
+  displayName: 'build_exec'
