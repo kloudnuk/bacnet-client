@@ -1,11 +1,8 @@
 #!/bin/bash
 
-ado_bacnetclient_pat=$1
-pass=$2
-
 function unlock_keyring() {
-    export "$(echo -n "${pass}" | gnome-keyring-daemon --replace --unlock)"
-    unset "${pass}"
+    export "$(echo -n "$(eon17_pass)" | gnome-keyring-daemon --replace --unlock)"
+    unset "$(eon17_pass)"
 }
 
 # apt update | apt upgrade -y
@@ -54,7 +51,7 @@ unlock_keyring
 poetry install --without test --sync
 poetry build -f wheel
 
-echo "$ado_bacnetclient_pat" | az devops login --organization https://dev.azure.com/vtsmolinski/
+echo "$(ado_ bacnetclient_pat)" | az devops login --organization https://dev.azure.com/vtsmolinski/
 
 az artifacts universal publish \
     --organization https://dev.azure.com/vtsmolinski/ \
