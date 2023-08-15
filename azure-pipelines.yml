@@ -47,7 +47,7 @@ steps:
       
       unlock_keyring
       
-      poetry install --without test --sync
+      poetry install --sync
       poetry build -f wheel
       
       echo "$(ado_ bacnetclient_pat)" | az devops login --organization https://dev.azure.com/vtsmolinski/
