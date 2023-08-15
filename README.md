@@ -21,6 +21,3 @@ Each service interface will support the *initialize* and *run* methods through i
 - The device list object also implements the Observable interface and either inserts or delete devices.
 - implement object comparison operators and compare each device to the current state for any changes, if an existing device has changed state, change the model's state accordingly and emit a change of value event for observer implementations such as the database client.
 - Once the database client receives the change of value event it will update the corresponding field on the database.
-
-## Data Point Discovery
-

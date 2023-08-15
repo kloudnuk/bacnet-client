@@ -1,7 +1,7 @@
 import datetime as dt
 import logging
 from collections import OrderedDict
-from Device import LocalBacnetDevice
+from .Device import LocalBacnetDevice
 from bacpypes3.pdu import Address
 from bacpypes3.primitivedata import ObjectIdentifier
 from bacpypes3.basetypes import PropertyIdentifier, StatusFlags, Reliability
