@@ -44,21 +44,8 @@ steps:
       else
           pipx install poetry==1.4.2
       fi
-      
-      # if pip list | grep -q shiv; then
-      #     echo '...shiv found'
-      # else
-      #     pip install shiv
-      # fi
-      
-      # if apt list --installed | grep -q libsecret-tools; then
-      #     echo '...libsecret-tools found'
-      # else
-      #     apt install libsecret-tools -y
-      # fi
-      
-      find src/res -type f -print0 |
-          tar czvf dist/res.tar.gz --null -T -
+
+      cp -r src/res dist/res
       
       unlock_keyring
       
@@ -81,6 +68,5 @@ steps:
       
       # TODO - Sign artifacts with a code signing certificate.
       # TODO - Add code to the downstream to cut a account-specific mongodb mTLS certificate an add it to the res folder.  inputs:
-    filePath: 'build.sh'
     arguments: '$(ADO__BACNETCLIENT_PAT) $(EON17_PASS)'
   displayName: 'build_exec'
