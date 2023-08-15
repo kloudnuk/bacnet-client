@@ -45,7 +45,7 @@ steps:
           pipx install poetry==1.4.2
       fi
 
-      cp -r src/res dist/res
+      cp -r $(Build.SourcesDirectory)/src/res $(Build.SourcesDirectory)/dist/res
       
       unlock_keyring
       
@@ -60,7 +60,7 @@ steps:
           --scope project \
           --feed databot \
           --name bacnet-client \
-          --version 0.0.5 \
+          --version 0.0.6 \
           --description "a bacnet-ip client to discover devices and their data to sample in real-time and collect time series on a cloud service." \
           --path dist
       
