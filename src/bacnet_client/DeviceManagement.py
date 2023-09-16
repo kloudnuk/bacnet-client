@@ -30,6 +30,7 @@ class DeviceManager(object):
         self.address = Address("*")
         self.mongo = Mongodb()
         self.config = configparser.ConfigParser()
+        self.timeout = 10
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
@@ -44,6 +45,7 @@ class DeviceManager(object):
         self.config.read("../res/local-device.ini")
         interval = int(self.config.get("device-discovery", "interval"))
         enable = bool(self.config.get("device-discovery", "enable"))
+        self.timeout = int(self.config.get("device-discovery", "timeout"))
 
         while enable:
             await self.discover()
@@ -51,6 +53,7 @@ class DeviceManager(object):
             self.config.read("../res/local-device.ini")
             interval = int(self.config.get("device-discovery", "interval"))
             enable = bool(self.config.get("device-discovery", "enable"))
+            self.timeout = int(self.config.get("device-discovery", "timeout"))
             await asyncio.sleep(interval * 60)
 
     async def discover(self):
@@ -62,7 +65,8 @@ class DeviceManager(object):
 
         iams = await self.app.who_is(self.lowLimit,
                                      self.highLimit,
-                                     self.address)
+                                     self.address,
+                                     self.timeout)
         self.logger.info(f"{len(iams)} BACnet IP devices found...")
         iamDict = {iam.iAmDeviceIdentifier: iam.pduSource for iam in iams}
         for id in iamDict:

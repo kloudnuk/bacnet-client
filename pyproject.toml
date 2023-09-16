@@ -8,12 +8,12 @@ packages = [{include = "bacnet_client", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-bacpypes3 = {git = "https://github.com/viteski/BACpypes3.git", develop = true}
 ifaddr = "^0.2.0"
 pymongo = "^4.3.3"
 motor = "^3.1.2"
 pytest = "^7.3.1"
 pytz = "^2023.3"
+bacpypes3 = {git = "https://github.com/viteski/BACpypes3.git", rev = "develop"}
 
 
 [build-system]
