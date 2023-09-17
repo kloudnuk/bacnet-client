@@ -30,7 +30,7 @@ class DeviceManager(object):
         self.address = Address("*")
         self.mongo = Mongodb()
         self.config = configparser.ConfigParser()
-        self.timeout = 10
+        self.timeout = 3
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
@@ -45,6 +45,7 @@ class DeviceManager(object):
         self.config.read("../res/local-device.ini")
         interval = int(self.config.get("device-discovery", "interval"))
         enable = bool(self.config.get("device-discovery", "enable"))
+        self.logger.debug(f"device mgt loop enable: {enable}")
         self.timeout = int(self.config.get("device-discovery", "timeout"))
 
         while enable:

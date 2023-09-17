@@ -27,26 +27,31 @@ class PollService(object):
         self.poll_lists = OrderedDict()
         self.points_specs = OrderedDict()
         self.logger = logging.getLogger('ClientLog')
+        self.enable = False
+        self.interval = 0
 
     def __new__(cls):
         if PollService.__instance is None:
             PollService.__instance = object.__new__(cls)
         return PollService.__instance
 
+    def read_settings(self):
+        self.config.read("../res/local-device.ini")
+        self.interval = int(self.config.get("point-polling", "interval"))
+        if self.config.get("point-polling", "enable") == "True":
+            self.enable = True
+        else:
+            self.enable = False
+
     async def run(self, app):
         if self.app is None:
             self.app = app
+            self.read_settings()
 
-        self.config.read("../res/local-device.ini")
-        interval = int(self.config.get("point-polling", "interval"))
-        enable = bool(self.config.get("point-polling", "enable"))
-
-        while enable:
+        while self.enable:
+            self.read_settings()
             await self.poll()
-            self.config.read("../res/local-device.ini")
-            interval = int(self.config.get("point-polling", "interval"))
-            enable = bool(self.config.get("point-polling", "enable"))
-            await asyncio.sleep(interval * 60)
+            await asyncio.sleep(self.interval * 60)
 
     async def poll(self):
         """

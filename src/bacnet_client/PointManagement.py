@@ -158,15 +158,71 @@ class PointManager(object):
                 self.mongo.getDb(),
                 "Points"
             )
+            self.logger.debug(f"Document count {docCount}")
         elif docCount == len(self.deviceSpecs):
+            self.logger.debug(f"Documents ({docCount}) == Specs: {len(self.deviceSpecs)}")
             for spec in self.deviceSpecs:
                 await self.mongo.replaceDocument(
                     spec,
                     self.mongo.getDb(),
                     "Points")
+        elif docCount < len(self.deviceSpecs):
+            self.logger.debug(f"Documents ({docCount}) < Specs: {len(self.deviceSpecs)}")
+            dbPayload = await self.mongo.findDocuments(self.mongo.getDb(),
+                                                       "Points",
+                                                       query={},
+                                                       projection={'id': 1, '_id': 0})
+            memSpecIds = set([int(str(spec["id"]).split(',')[1]) for spec in self.deviceSpecs])
+            dbSpecIds = set([int(str(spec["id"]).split(',')[1]) for spec in dbPayload])
+
+            self.logger.debug(f"device specs available in memory {memSpecIds}")
+            self.logger.debug(f"device specs pulled from db {dbSpecIds}")
+            newSpecIds = memSpecIds - dbSpecIds
+            foundSpecIds = memSpecIds & dbSpecIds
+
+            self.logger.debug(f"device specs available in memory: {memSpecIds}")
+            self.logger.debug(f"device specs pulled from db: {dbSpecIds}")
+            self.logger.debug(f"new specs to push to db: {newSpecIds}")
+            self.logger.debug(f"existing specs to be updated on db: {foundSpecIds}")
+
+            newSpecs = \
+                list(filter(lambda spec:
+                            int(str(spec['id']).split(',')[1]) in list(newSpecIds),
+                            sorted(list(self.deviceSpecs))))
+            for ns in newSpecs:
+                await self.mongo.writeDocument(ns, self.mongo.getDb(), "Points")
+
+            foundSpecs = \
+                list(filter(lambda spec:
+                            int(str(spec['id']).split(',')[1]) in list(foundSpecIds),
+                            sorted(list(self.deviceSpecs))))
+            for fs in foundSpecs:
+                await self.mongo.replaceDocument(fs, self.mongo.getDb(), "Points")
+
+        elif docCount > len(self.deviceSpecs):
+            self.logger.debug(f"Documents ({docCount}) > Specs: {len(self.deviceSpecs)}")
+            dbPayload = await self.mongo.findDocuments(self.mongo.getDb(),
+                                                       "Points",
+                                                       query={},
+                                                       projection={'id': 1, '_id': 0})
+            memSpecIds = set([int(str(spec["id"]).split(',')[1]) for spec in self.deviceSpecs])
+            dbSpecIds = set([int(str(spec["id"]).split(',')[1]) for spec in dbPayload])
+            foundSpecIds = memSpecIds & dbSpecIds
+
+            self.logger.debug(f"device specs available in memory: {memSpecIds}")
+            self.logger.debug(f"device specs pulled from db: {dbSpecIds}")
+            self.logger.debug(f"existing specs to be updated on db: {foundSpecIds}")
+
+            foundSpecs = \
+                list(filter(lambda spec:
+                            int(str(spec['id']).split(',')[1]) in list(foundSpecIds),
+                            sorted(list(self.deviceSpecs))))
+            for fs in foundSpecs:
+                await self.mongo.replaceDocument(fs, self.mongo.getDb(), "Points")
+
         else:
-            self.logger.error(f"ERROR - 1. ({docCount} > {len(self.deviceSpecs)}) -> add/replace \n\
-                  2. ({docCount} < {len(self.deviceSpecs)}) -> replace/no-sync")
+            self.logger.error("could not commit devices to the database...!", stack_info=True)
+            raise Exception("ERROR - could not commit devices to the database...!")
 
         self.deviceSpecs.clear()
         self.object_graph.clear()
