@@ -1,5 +1,4 @@
 
-import configparser
 import asyncio
 import logging
 import pickle
@@ -20,36 +19,27 @@ class PollService(object):
 
     def __init__(self) -> None:
         self.app: NormalApplication = None
-        self.config = configparser.ConfigParser()
         self.localDevice = LocalBacnetDevice()
         self.mongo = Mongodb()
         self.object_graph: dict = {}
         self.poll_lists = OrderedDict()
         self.points_specs = OrderedDict()
         self.logger = logging.getLogger('ClientLog')
+        self.interval = 15
         self.enable = False
-        self.interval = 0
 
     def __new__(cls):
         if PollService.__instance is None:
             PollService.__instance = object.__new__(cls)
         return PollService.__instance
 
-    def read_settings(self):
-        self.config.read("../res/local-device.ini")
-        self.interval = int(self.config.get("point-polling", "interval"))
-        if self.config.get("point-polling", "enable") == "True":
-            self.enable = True
-        else:
-            self.enable = False
-
-    async def run(self, app):
+    async def run(self, bacapp):
         if self.app is None:
-            self.app = app
-            self.read_settings()
+            self.app = bacapp.app
+        self.enable = bacapp.read_setting("point-polling", "enable")
 
         while self.enable:
-            self.read_settings()
+            self.interval = bacapp.read_setting("point-polling", "interval")
             await self.poll()
             await asyncio.sleep(self.interval * 60)
 

@@ -30,6 +30,19 @@ class Bacapp(object):
             Bacapp.__instance = object.__new__(cls)
         return Bacapp.__instance
 
+    def read_setting(self, section, prop):
+        config = configparser.ConfigParser()
+        config.read("../res/local-device.ini")
+        setting = str(config.get(section, prop))
+        if prop == "enable":
+            if setting == "True":
+                setting = True
+            else:
+                setting = False
+        elif prop == "interval" or prop == "timeout":
+            setting = int(setting)
+        return setting
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record):
@@ -86,9 +99,9 @@ async def main():
         pointMgr = pm.PointManager()
         pollSrv = pp.PollService()
 
-        devMgr_task = loop.create_task(deviceMgr.run(bacapp.app))
-        pointMgr_task = loop.create_task(pointMgr.run(bacapp.app))
-        pollMgr_task = loop.create_task(pollSrv.run(bacapp.app))
+        devMgr_task = loop.create_task(deviceMgr.run(bacapp))
+        pointMgr_task = loop.create_task(pointMgr.run(bacapp))
+        pollMgr_task = loop.create_task(pollSrv.run(bacapp))
         logger_task = loop.create_task(log(logQ))
 
         await devMgr_task

@@ -1,5 +1,4 @@
 
-import configparser
 import pickle
 import logging
 import asyncio
@@ -23,13 +22,14 @@ class PointManager(object):
     def __init__(self) -> None:
         self.app: NormalApplication = None
         self.poller: pp.PollService = None
-        self.config = configparser.ConfigParser()
         self.deviceSpecs = []
         self.object_graph = {}
         self.localDevice = LocalBacnetDevice()
         self.lowLimit = 0
         self.highLimit = 4194303
         self.mongo = Mongodb()
+        self.enable = True
+        self.interval = 120
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
@@ -37,21 +37,16 @@ class PointManager(object):
             PointManager.__instance = object.__new__(cls)
         return PointManager.__instance
 
-    async def run(self, app):
+    async def run(self, bacapp):
         if self.app is None:
-            self.app = app
+            self.app = bacapp.app
+        self.enable = bacapp.read_setting("point-discovery", "enable")
 
-        self.config.read("../res/local-device.ini")
-        interval = int(self.config.get("point-discovery", "interval"))
-        enable = bool(self.config.get("point-discovery", "enable"))
-
-        while enable:
+        while self.enable:
+            self.interval = bacapp.read_setting("point-discovery", "interval")
             await self.discover()
             await self.commit()
-            self.config.read("../res/local-device.ini")
-            interval = int(self.config.get("point-discovery", "interval"))
-            enable = bool(self.config.get("point-discovery", "enable"))
-            await asyncio.sleep(interval * 60)
+            await asyncio.sleep(self.interval * 60)
 
     async def discover(self):
         """

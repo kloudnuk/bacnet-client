@@ -2,7 +2,6 @@
 import asyncio
 import logging
 import datetime as dt
-import configparser
 from .Device import LocalBacnetDevice, BacnetDevice
 from bacpypes3.pdu import Address
 from bacpypes3.primitivedata import ObjectIdentifier
@@ -29,8 +28,9 @@ class DeviceManager(object):
         self.highLimit = 4194303
         self.address = Address("*")
         self.mongo = Mongodb()
-        self.config = configparser.ConfigParser()
-        self.timeout = 3
+        self.enable = True
+        self.interval = 1440
+        self.timeout = 10
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
@@ -38,24 +38,17 @@ class DeviceManager(object):
             DeviceManager.__instance = object.__new__(cls)
         return DeviceManager.__instance
 
-    async def run(self, app):
+    async def run(self, bacapp):
         if self.app is None:
-            self.app = app
+            self.app = bacapp.app
+        self.enable = bacapp.read_setting("device-discovery", "enable")
 
-        self.config.read("../res/local-device.ini")
-        interval = int(self.config.get("device-discovery", "interval"))
-        enable = bool(self.config.get("device-discovery", "enable"))
-        self.logger.debug(f"device mgt loop enable: {enable}")
-        self.timeout = int(self.config.get("device-discovery", "timeout"))
-
-        while enable:
+        while self.enable:
+            self.interval = bacapp.read_setting("device-discovery", "interval")
+            self.timeout = bacapp.read_setting("device-discovery", "timeout")
             await self.discover()
             await self.commit()
-            self.config.read("../res/local-device.ini")
-            interval = int(self.config.get("device-discovery", "interval"))
-            enable = bool(self.config.get("device-discovery", "enable"))
-            self.timeout = int(self.config.get("device-discovery", "timeout"))
-            await asyncio.sleep(interval * 60)
+            await asyncio.sleep(self.interval * 60)
 
     async def discover(self):
         """ Sends a who-is broadcast to the subnet and stores a list of responses. It parses
