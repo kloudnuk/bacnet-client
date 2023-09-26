@@ -24,6 +24,7 @@ class Bacapp(object):
         self.localDevice = LocalBacnetDevice()
         self.app = NormalApplication(self.localDevice.deviceObject,
                                      self.localDevice.deviceAddress)
+        self.respath = None  # ../res/
 
     def __new__(cls):
         if Bacapp.__instance is None:
@@ -32,7 +33,7 @@ class Bacapp(object):
 
     def read_setting(self, section, prop):
         config = configparser.ConfigParser()
-        config.read("../res/local-device.ini")
+        config.read(f"{self.respath}local-device.ini")
         setting = str(config.get(section, prop))
         if prop == "enable":
             if setting == "True":
@@ -79,11 +80,10 @@ async def log(q):
         await asyncio.sleep(1)
 
 
-async def main():
+async def main(res):
     """
     Run or schedule all your services from this entry-point script.
     """
-
     try:
         ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
         loop = asyncio.get_running_loop()
@@ -95,6 +95,8 @@ async def main():
         logger.setLevel(logging.DEBUG)
 
         bacapp = Bacapp()
+        bacapp.respath = res
+        print(f"The Resources Folder: {bacapp.respath}")
         deviceMgr = dm.DeviceManager()
         pointMgr = pm.PointManager()
         pollSrv = pp.PollService()

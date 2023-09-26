@@ -40,6 +40,7 @@ class PollService(object):
 
         while self.enable:
             self.interval = bacapp.read_setting("point-polling", "interval")
+            self.enable = bacapp.read_setting("point-polling", "enable")
             await self.poll()
             await asyncio.sleep(self.interval * 60)
 

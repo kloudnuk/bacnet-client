@@ -46,6 +46,7 @@ class DeviceManager(object):
         while self.enable:
             self.interval = bacapp.read_setting("device-discovery", "interval")
             self.timeout = bacapp.read_setting("device-discovery", "timeout")
+            self.enable = bacapp.read_setting("device-discovery", "enable")
             await self.discover()
             await self.commit()
             await asyncio.sleep(self.interval * 60)

@@ -44,6 +44,7 @@ class PointManager(object):
 
         while self.enable:
             self.interval = bacapp.read_setting("point-discovery", "interval")
+            self.enable = bacapp.read_setting("point-discovery", "enable")
             await self.discover()
             await self.commit()
             await asyncio.sleep(self.interval * 60)

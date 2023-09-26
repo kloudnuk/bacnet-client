@@ -4,7 +4,7 @@
 # https://aka.ms/yaml
 
 trigger:
-- main
+- 19-build-self-management-service
 
 pool: Default
 
@@ -46,9 +46,12 @@ steps:
       fi
       
       unlock_keyring
-      
+      rm -r dist/*
       poetry install --sync
       poetry build -f wheel
+
+      [[ dist/res ]] && rm -r dist/res/
+      cp -r src/res/ dist/
       
       echo "$(ado_ bacnetclient_pat)" | az devops login --organization https://dev.azure.com/vtsmolinski/
       
@@ -58,7 +61,7 @@ steps:
           --scope project \
           --feed databot \
           --name bacnet-client \
-          --version 0.0.7 \
+          --version 0.0.8 \
           --description "a bacnet-ip client to discover devices and their data to sample in real-time and collect time series on a cloud service." \
           --path dist
       
