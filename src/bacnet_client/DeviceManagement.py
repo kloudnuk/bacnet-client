@@ -7,6 +7,7 @@ from bacpypes3.pdu import Address
 from bacpypes3.primitivedata import ObjectIdentifier
 from bacpypes3.apdu import AbortPDU, AbortReason
 from .MongoClient import Mongodb
+from .SelfManagement import LocalManager
 
 
 class DeviceManager(object):
@@ -21,6 +22,7 @@ class DeviceManager(object):
     __instance = None
 
     def __init__(self) -> None:
+        self.localMgr: LocalManager = LocalManager()
         self.devices: set = set()
         self.localDevice = LocalBacnetDevice()
         self.app = None
@@ -41,12 +43,12 @@ class DeviceManager(object):
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
-        self.enable = bacapp.read_setting("device-discovery", "enable")
+        self.enable = self.localMgr.read_setting("device-discovery", "enable")
 
         while self.enable:
-            self.interval = bacapp.read_setting("device-discovery", "interval")
-            self.timeout = bacapp.read_setting("device-discovery", "timeout")
-            self.enable = bacapp.read_setting("device-discovery", "enable")
+            self.interval = self.localMgr.read_setting("device-discovery", "interval")
+            self.timeout = self.localMgr.read_setting("device-discovery", "timeout")
+            self.enable = self.localMgr.read_setting("device-discovery", "enable")
             await self.discover()
             await self.commit()
             await asyncio.sleep(self.interval * 60)

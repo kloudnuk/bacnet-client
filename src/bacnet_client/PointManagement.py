@@ -5,6 +5,7 @@ import asyncio
 from collections import OrderedDict
 from .Device import LocalBacnetDevice
 from .MongoClient import Mongodb
+from .SelfManagement import LocalManager
 import bacnet_client.Point as pt
 import bacnet_client.PointPolling as pp
 from bacpypes3.ipv4.app import NormalApplication
@@ -20,6 +21,7 @@ class PointManager(object):
     __instance = None
 
     def __init__(self) -> None:
+        self.localMgr: LocalManager = LocalManager()
         self.app: NormalApplication = None
         self.poller: pp.PollService = None
         self.deviceSpecs = []
@@ -40,11 +42,11 @@ class PointManager(object):
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
-        self.enable = bacapp.read_setting("point-discovery", "enable")
+        self.enable = self.localMgr.read_setting("point-discovery", "enable")
 
         while self.enable:
-            self.interval = bacapp.read_setting("point-discovery", "interval")
-            self.enable = bacapp.read_setting("point-discovery", "enable")
+            self.interval = self.localMgr.read_setting("point-discovery", "interval")
+            self.enable = self.localMgr.read_setting("point-discovery", "enable")
             await self.discover()
             await self.commit()
             await asyncio.sleep(self.interval * 60)

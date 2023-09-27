@@ -5,6 +5,7 @@ import pickle
 from .Device import LocalBacnetDevice
 from .Point import BacnetPoint
 from .MongoClient import Mongodb
+from .SelfManagement import LocalManager
 from bacpypes3.ipv4.app import NormalApplication
 from collections import OrderedDict
 
@@ -18,6 +19,7 @@ class PollService(object):
     __instance = None
 
     def __init__(self) -> None:
+        self.localMgr: LocalManager = LocalManager()
         self.app: NormalApplication = None
         self.localDevice = LocalBacnetDevice()
         self.mongo = Mongodb()
@@ -36,11 +38,11 @@ class PollService(object):
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
-        self.enable = bacapp.read_setting("point-polling", "enable")
+        self.enable = self.localMgr.read_setting("point-polling", "enable")
 
         while self.enable:
-            self.interval = bacapp.read_setting("point-polling", "interval")
-            self.enable = bacapp.read_setting("point-polling", "enable")
+            self.interval = self.localMgr.read_setting("point-polling", "interval")
+            self.enable = self.localMgr.read_setting("point-polling", "enable")
             await self.poll()
             await asyncio.sleep(self.interval * 60)
 

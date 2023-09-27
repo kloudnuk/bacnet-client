@@ -4,7 +4,6 @@ import logging
 import queue
 import json
 import re
-import configparser
 from logging.handlers import QueueHandler
 from bacpypes3.ipv4.app import NormalApplication
 from .Device import LocalBacnetDevice
@@ -14,6 +13,7 @@ from .MongoClient import Mongodb
 import bacnet_client.DeviceManagement as dm
 import bacnet_client.PointManagement as pm
 import bacnet_client.PointPolling as pp
+from .SelfManagement import LocalManager
 
 
 class Bacapp(object):
@@ -24,25 +24,12 @@ class Bacapp(object):
         self.localDevice = LocalBacnetDevice()
         self.app = NormalApplication(self.localDevice.deviceObject,
                                      self.localDevice.deviceAddress)
-        self.respath = None  # ../res/
+        self.localMgr = LocalManager()
 
     def __new__(cls):
         if Bacapp.__instance is None:
             Bacapp.__instance = object.__new__(cls)
         return Bacapp.__instance
-
-    def read_setting(self, section, prop):
-        config = configparser.ConfigParser()
-        config.read(f"{self.respath}local-device.ini")
-        setting = str(config.get(section, prop))
-        if prop == "enable":
-            if setting == "True":
-                setting = True
-            else:
-                setting = False
-        elif prop == "interval" or prop == "timeout":
-            setting = int(setting)
-        return setting
 
 
 class JsonFormatter(logging.Formatter):
@@ -80,7 +67,7 @@ async def log(q):
         await asyncio.sleep(1)
 
 
-async def main(res):
+async def main():
     """
     Run or schedule all your services from this entry-point script.
     """
@@ -95,8 +82,6 @@ async def main(res):
         logger.setLevel(logging.DEBUG)
 
         bacapp = Bacapp()
-        bacapp.respath = res
-        print(f"The Resources Folder: {bacapp.respath}")
         deviceMgr = dm.DeviceManager()
         pointMgr = pm.PointManager()
         pollSrv = pp.PollService()
