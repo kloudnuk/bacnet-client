@@ -24,7 +24,7 @@ class Bacapp(object):
         self.localDevice = LocalBacnetDevice()
         self.app = NormalApplication(self.localDevice.deviceObject,
                                      self.localDevice.deviceAddress)
-        self.localMgr = LocalManager()
+        self.localMgr: LocalManager = LocalManager()
 
     def __new__(cls):
         if Bacapp.__instance is None:
@@ -63,7 +63,6 @@ async def log(q):
                                               "Logs")
         except Exception as e:
             print(e)
-
         await asyncio.sleep(1)
 
 

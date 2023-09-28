@@ -7,10 +7,13 @@ from bacpypes3.pdu import Address
 from bacpypes3.primitivedata import ObjectIdentifier
 from bacpypes3.apdu import AbortPDU, AbortReason
 from .MongoClient import Mongodb
-from .SelfManagement import LocalManager
+from .SelfManagement import (
+    Subscriber,
+    Subscription
+)
 
 
-class DeviceManager(object):
+class DeviceManager(Subscriber):
     """
     Bacnet Device Discovery Service; the service issues who-is
     broadcast messages gathering a list of bacnet devices currently live
@@ -22,7 +25,6 @@ class DeviceManager(object):
     __instance = None
 
     def __init__(self) -> None:
-        self.localMgr: LocalManager = LocalManager()
         self.devices: set = set()
         self.localDevice = LocalBacnetDevice()
         self.app = None
@@ -30,9 +32,11 @@ class DeviceManager(object):
         self.highLimit = 4194303
         self.address = Address("*")
         self.mongo = Mongodb()
-        self.enable = True
-        self.interval = 1440
-        self.timeout = 10
+        self.settings: dict = {
+            "enable": Subscription("device-deiscovery", "enable", True),
+            "interval": Subscription("device-discovery", "interval", 1440),
+            "timeout": Subscription("device-discovery", "timeout", 10)
+        }
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
@@ -40,18 +44,25 @@ class DeviceManager(object):
             DeviceManager.__instance = object.__new__(cls)
         return DeviceManager.__instance
 
+    def update(self, sub: Subscription):
+        for k, v in self.settings.items():
+            if (k == sub.option):
+                self.settings[k] = sub.value
+
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
-        self.enable = self.localMgr.read_setting("device-discovery", "enable")
 
-        while self.enable:
-            self.interval = self.localMgr.read_setting("device-discovery", "interval")
-            self.timeout = self.localMgr.read_setting("device-discovery", "timeout")
-            self.enable = self.localMgr.read_setting("device-discovery", "enable")
+        if bacapp.localMgr.initialized is True:
+            for k, v in self.settings.items():
+                for option in bacapp.localMgr.options:
+                    if (option.option == k):
+                        option.subscribe(v)
+
+        while bool(self.settings.get("enable").value):
             await self.discover()
             await self.commit()
-            await asyncio.sleep(self.interval * 60)
+            await asyncio.sleep(int(self.settings.get("interval").value * 60))
 
     async def discover(self):
         """ Sends a who-is broadcast to the subnet and stores a list of responses. It parses
@@ -63,7 +74,7 @@ class DeviceManager(object):
         iams = await self.app.who_is(self.lowLimit,
                                      self.highLimit,
                                      self.address,
-                                     self.timeout)
+                                     int(self.settings.get("timeout").value))
         self.logger.info(f"{len(iams)} BACnet IP devices found...")
         iamDict = {iam.iAmDeviceIdentifier: iam.pduSource for iam in iams}
         for id in iamDict:
