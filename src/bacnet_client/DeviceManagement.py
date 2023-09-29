@@ -7,10 +7,7 @@ from bacpypes3.pdu import Address
 from bacpypes3.primitivedata import ObjectIdentifier
 from bacpypes3.apdu import AbortPDU, AbortReason
 from .MongoClient import Mongodb
-from .SelfManagement import (
-    Subscriber,
-    Subscription
-)
+from .SelfManagement import Subscriber
 
 
 class DeviceManager(Subscriber):
@@ -33,9 +30,9 @@ class DeviceManager(Subscriber):
         self.address = Address("*")
         self.mongo = Mongodb()
         self.settings: dict = {
-            "enable": Subscription("device-deiscovery", "enable", True),
-            "interval": Subscription("device-discovery", "interval", 1440),
-            "timeout": Subscription("device-discovery", "timeout", 10)
+            "enable": True,
+            "interval": 1440,
+            "timeout": 10
         }
         self.logger = logging.getLogger('ClientLog')
 
@@ -44,25 +41,20 @@ class DeviceManager(Subscriber):
             DeviceManager.__instance = object.__new__(cls)
         return DeviceManager.__instance
 
-    def update(self, sub: Subscription):
-        for k, v in self.settings.items():
-            if (k == sub.option):
-                self.settings[k] = sub.value
+    def update(self, option, value):
+        self.settings[option] = value
 
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
 
         if bacapp.localMgr.initialized is True:
-            for k, v in self.settings.items():
-                for option in bacapp.localMgr.options:
-                    if (option.option == k):
-                        option.subscribe(v)
+            bacapp.localMgr.subscribe(self.__instance)
 
-        while bool(self.settings.get("enable").value):
+        while self.settings.get("enable"):
             await self.discover()
             await self.commit()
-            await asyncio.sleep(int(self.settings.get("interval").value * 60))
+            await asyncio.sleep(self.settings.get("interval") * 60)
 
     async def discover(self):
         """ Sends a who-is broadcast to the subnet and stores a list of responses. It parses
@@ -74,7 +66,7 @@ class DeviceManager(Subscriber):
         iams = await self.app.who_is(self.lowLimit,
                                      self.highLimit,
                                      self.address,
-                                     int(self.settings.get("timeout").value))
+                                     self.settings.get("timeout"))
         self.logger.info(f"{len(iams)} BACnet IP devices found...")
         iamDict = {iam.iAmDeviceIdentifier: iam.pduSource for iam in iams}
         for id in iamDict:

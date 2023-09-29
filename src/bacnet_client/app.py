@@ -85,17 +85,20 @@ async def main():
         pointMgr = pm.PointManager()
         pollSrv = pp.PollService()
 
+        io_delta_task = loop.create_task(bacapp.localMgr.proces_io_deltas())
         devMgr_task = loop.create_task(deviceMgr.run(bacapp))
         pointMgr_task = loop.create_task(pointMgr.run(bacapp))
         pollMgr_task = loop.create_task(pollSrv.run(bacapp))
         logger_task = loop.create_task(log(logQ))
 
+        await io_delta_task
         await devMgr_task
         await pointMgr_task
         await pollMgr_task
         await logger_task
 
     finally:
+        io_delta_task.cancel()
         bacapp.app.close()
         devMgr_task.cancel()
         pointMgr_task.cancel()
