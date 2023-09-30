@@ -4,7 +4,6 @@ import logging
 import pickle
 from .Device import LocalBacnetDevice
 from .Point import BacnetPoint
-from .MongoClient import Mongodb
 from .SelfManagement import (LocalManager,
                              Subscriber)
 from bacpypes3.ipv4.app import NormalApplication
@@ -22,8 +21,8 @@ class PollService(Subscriber):
     def __init__(self) -> None:
         self.localMgr: LocalManager = LocalManager()
         self.app: NormalApplication = None
+        self.mongo = None
         self.localDevice = LocalBacnetDevice()
-        self.mongo = Mongodb()
         self.object_graph: dict = {}
         self.poll_lists = OrderedDict()
         self.points_specs = OrderedDict()
@@ -50,6 +49,8 @@ class PollService(Subscriber):
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
+        if self.mongo is None:
+            self.mongo = bacapp.clients.get("mongodb")
 
         if bacapp.localMgr.initialized is True:
             bacapp.localMgr.subscribe(self.__instance)

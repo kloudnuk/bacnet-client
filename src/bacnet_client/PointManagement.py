@@ -4,7 +4,6 @@ import logging
 import asyncio
 from collections import OrderedDict
 from .Device import LocalBacnetDevice
-from .MongoClient import Mongodb
 from .SelfManagement import Subscriber
 import bacnet_client.Point as pt
 import bacnet_client.PointPolling as pp
@@ -23,12 +22,12 @@ class PointManager(Subscriber):
     def __init__(self) -> None:
         self.app: NormalApplication = None
         self.poller: pp.PollService = None
+        self.mongo = None
         self.deviceSpecs = []
         self.object_graph = {}
         self.localDevice = LocalBacnetDevice()
         self.lowLimit = 0
         self.highLimit = 4194303
-        self.mongo = Mongodb()
         self.settings: dict = {
             "section": "point-discovery",
             "enable": True,
@@ -52,6 +51,8 @@ class PointManager(Subscriber):
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
+        if self.mongo is None:
+            self.mongo = bacapp.clients.get("mongodb")
 
         if bacapp.localMgr.initialized is True:
             bacapp.localMgr.subscribe(self.__instance)

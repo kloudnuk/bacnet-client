@@ -6,7 +6,6 @@ from .Device import LocalBacnetDevice, BacnetDevice
 from bacpypes3.pdu import Address
 from bacpypes3.primitivedata import ObjectIdentifier
 from bacpypes3.apdu import AbortPDU, AbortReason
-from .MongoClient import Mongodb
 from .SelfManagement import Subscriber
 
 
@@ -25,10 +24,10 @@ class DeviceManager(Subscriber):
         self.devices: set = set()
         self.localDevice = LocalBacnetDevice()
         self.app = None
+        self.mongo = None
         self.lowLimit = 0
         self.highLimit = 4194303
         self.address = Address("*")
-        self.mongo = Mongodb()
         self.settings = {
             "section": "device-discovery",
             "enable": True,
@@ -53,6 +52,8 @@ class DeviceManager(Subscriber):
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
+        if self.mongo is None:
+            self.mongo = bacapp.clients.get("mongodb")
 
         if bacapp.localMgr.initialized is True:
             bacapp.localMgr.subscribe(self.__instance)

@@ -22,6 +22,9 @@ class Bacapp(object):
 
     def __init__(self) -> None:
         self.localMgr: LocalManager = LocalManager()
+        self.clients = {
+            "mongodb": Mongodb()
+        }
         self.localDevice = LocalBacnetDevice()
         self.app = NormalApplication(self.localDevice.deviceObject,
                                      self.localDevice.deviceAddress)
@@ -45,8 +48,7 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_data, ensure_ascii=False)
 
 
-async def log(q):
-    mongo = Mongodb()
+async def log(q, mongo):
     while True:
         try:
             if q.empty() is not True:
@@ -89,7 +91,7 @@ async def main():
         devMgr_task = loop.create_task(deviceMgr.run(bacapp))
         pointMgr_task = loop.create_task(pointMgr.run(bacapp))
         pollMgr_task = loop.create_task(pollSrv.run(bacapp))
-        logger_task = loop.create_task(log(logQ))
+        logger_task = loop.create_task(log(logQ, bacapp.clients.get("mongodb")))
 
         await io_delta_task
         await devMgr_task
