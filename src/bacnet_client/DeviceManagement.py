@@ -29,10 +29,11 @@ class DeviceManager(Subscriber):
         self.highLimit = 4194303
         self.address = Address("*")
         self.mongo = Mongodb()
-        self.settings: dict = {
-            "enable": ("device-discovery", True),
-            "interval": ("device-discovery", 1440),
-            "timeout": ("device-discovery", 10)
+        self.settings = {
+            "section": "device-discovery",
+            "enable": True,
+            "interval": 12,  # minutes
+            "timeout": 10    # seconds
         }
         self.logger = logging.getLogger('ClientLog')
 
@@ -42,12 +43,12 @@ class DeviceManager(Subscriber):
         return DeviceManager.__instance
 
     def update(self, section, option, value):
-        self.logger.debug(f"performing ini update on {self.__instance}: validating config setting {section} - {option}")
-        if section in self.settings.get(option):
-            self.logger.debug(f"validated correct section: {self.settings.get(option)[0]}")
-            self.settings[option][1] = value
-        else:
-            self.logger.debug(f"Validation failed, section does not belong to this service: {self.settings.get(option)[0]}")
+        self.logger.debug(f"performing ini update on {self}: validating config setting {section} - {option}")
+        if section in self.settings.get("section"):
+            self.logger.debug(f"validated correct section: {self.settings.get('section')}")
+            oldvalue = self.settings.get(option)
+            self.settings[option] = value
+            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
 
     async def run(self, bacapp):
         if self.app is None:
@@ -56,10 +57,10 @@ class DeviceManager(Subscriber):
         if bacapp.localMgr.initialized is True:
             bacapp.localMgr.subscribe(self.__instance)
 
-        while self.settings.get("enable"):
+        while bool(self.settings.get("enable")):
             await self.discover()
             await self.commit()
-            await asyncio.sleep(self.settings.get("interval") * 60)
+            await asyncio.sleep(int(self.settings.get("interval")) * 60)
 
     async def discover(self):
         """ Sends a who-is broadcast to the subnet and stores a list of responses. It parses

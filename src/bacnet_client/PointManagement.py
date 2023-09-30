@@ -5,13 +5,13 @@ import asyncio
 from collections import OrderedDict
 from .Device import LocalBacnetDevice
 from .MongoClient import Mongodb
-from .SelfManagement import LocalManager
+from .SelfManagement import Subscriber
 import bacnet_client.Point as pt
 import bacnet_client.PointPolling as pp
 from bacpypes3.ipv4.app import NormalApplication
 
 
-class PointManager(object):
+class PointManager(Subscriber):
     """
     Bacnet Point Discovery Service: the service issues who-has messages and creates
     a collection of points on the database for each device already on the database.
@@ -21,7 +21,6 @@ class PointManager(object):
     __instance = None
 
     def __init__(self) -> None:
-        self.localMgr: LocalManager = LocalManager()
         self.app: NormalApplication = None
         self.poller: pp.PollService = None
         self.deviceSpecs = []
@@ -30,8 +29,11 @@ class PointManager(object):
         self.lowLimit = 0
         self.highLimit = 4194303
         self.mongo = Mongodb()
-        self.enable = True
-        self.interval = 120
+        self.settings: dict = {
+            "section": "point-discovery",
+            "enable": True,
+            "interval": 12  # minutes
+        }
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
@@ -39,17 +41,25 @@ class PointManager(object):
             PointManager.__instance = object.__new__(cls)
         return PointManager.__instance
 
+    def update(self, section, option, value):
+        self.logger.debug(f"performing ini update on {self}: validating config setting {section} - {option}")
+        if section in self.settings.get("section"):
+            self.logger.debug(f"validated correct section: {self.settings.get('section')}")
+            oldvalue = self.settings.get(option)
+            self.settings[option] = value
+            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
+
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
-        self.enable = self.localMgr.read_setting("point-discovery", "enable")
 
-        while self.enable:
-            self.interval = self.localMgr.read_setting("point-discovery", "interval")
-            self.enable = self.localMgr.read_setting("point-discovery", "enable")
+        if bacapp.localMgr.initialized is True:
+            bacapp.localMgr.subscribe(self.__instance)
+
+        while bool(self.settings.get("enable")):
             await self.discover()
             await self.commit()
-            await asyncio.sleep(self.interval * 60)
+            await asyncio.sleep(int(self.settings.get("interval")) * 60)
 
     async def discover(self):
         """

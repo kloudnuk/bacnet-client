@@ -45,12 +45,9 @@ class LocalManager(object):
         configuration settings during runtime.
         """
         for sub in self.subscribers:
-            try:
-                for k, v in sub.settings.items():
-                    if k == opt.option:
-                        sub.update(opt.section, opt.option, self.set_type(value))
-            except Exception as e:
-                self.logger.error(f"{e}")
+            for k in sub.settings:
+                if k == opt.option:
+                    sub.update(opt.section, opt.option, self.set_type(value))
 
     def subscribe(self, sub):
         """
@@ -97,8 +94,10 @@ class LocalManager(object):
         and sent to subscribers.
         """
         typed_value = None
-        if value == 'True' or value == 'False':
-            typed_value = bool(value)
+        if value == "True":
+            typed_value = True
+        elif value == "False":
+            typed_value = False
         else:
             try:
                 typed_value = int(value)
