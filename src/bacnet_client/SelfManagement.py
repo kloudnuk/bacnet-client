@@ -27,11 +27,12 @@ class LocalManager(object):
         self.initialized = False
         self.options = []
         self.subscribers = []
-        self.build_options()
+        self.last_event = 0
         self.logger = logging.getLogger('ClientLog')
-        subprocess.run(["../res/resmgr.sh",
-                        "../res/local-device.ini",
-                        "../res/ioevents"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.build_options()
+        subprocess.run([f"{self.respath}ini_eventmgr.sh",
+                        f"{self.respath}local-device.ini",
+                        f"{self.respath}ini.events"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def __new__(cls):
         if LocalManager.__instance is None:
@@ -39,21 +40,35 @@ class LocalManager(object):
         return LocalManager.__instance
 
     def notify(self, opt, value):
+        """
+        Notify all configuration-change event subscribers so they can update their
+        configuration settings during runtime.
+        """
         for sub in self.subscribers:
             try:
                 for k, v in sub.settings.items():
                     if k == opt.option:
-                        sub.update(opt.option, self.set_type(value))
+                        sub.update(opt.section, opt.option, self.set_type(value))
             except Exception as e:
                 self.logger.error(f"{e}")
 
     def subscribe(self, sub):
+        """
+        Add services using the configuration file as change-event notification subscribers
+        """
         self.subscribers.append(sub)
 
     def unsubscribe(self, sub):
+        """
+        Remove service from the subscription list
+        """
         self.subscriptions.remove(sub)
 
     def build_options(self):
+        """
+        Initialize the in-memory configuration state. Flatten the configuration tree, into a
+        list of Option objects with their corresponding attributes.
+        """
         self.config.read(f"{self.respath}local-device.ini")
         sections = self.config.sections()
         for section in sections:
@@ -63,7 +78,6 @@ class LocalManager(object):
                 self.options.append(Option(section, option, value))
         self.initialized = True
 
-    # Deprecated (will remove soon)
     def read_setting(self, section, prop):
         self.config.read(f"{self.respath}local-device.ini")
         setting = str(self.config.get(section, prop))
@@ -76,7 +90,12 @@ class LocalManager(object):
             setting = int(setting)
         return setting
 
+    @classmethod
     def set_type(self, value):
+        """
+        Provide type guarantee for the configuration setting's values as they are updated
+        and sent to subscribers.
+        """
         typed_value = None
         if value == 'True' or value == 'False':
             typed_value = bool(value)
@@ -91,7 +110,11 @@ class LocalManager(object):
         return typed_value
 
     def get_event_count(self, file_path):
-        line_count = 0
+        """
+        Get current recorded events tally, in order to compare with the last tally run, and
+        identify when new events have occur.
+        """
+        line_count = self.last_event
         try:
             with open(file_path, "r") as file:
                 line_count = sum(1 for line in file)
@@ -103,6 +126,9 @@ class LocalManager(object):
         return line_count
 
     def clear_events(self, file_path):
+        """"
+        Reset the event count to zero at a certain point not to overflow its max size.
+        """
         try:
             with open(file_path, "w") as file:
                 self.logger.debug(f"clearing {file.name} events")
@@ -114,9 +140,9 @@ class LocalManager(object):
 
     def sync(self):
         """
-        This function runs inside the asyn function 'process_io_deltas'. It does the
+        This function runs inside process_io_deltas'. It does the
         actual work of traversing the document tree and checking each option's mem/io delta
-        and notifying all the subscribers of options with active deltas of the change.
+        and notifying all the subscribers to options with active deltas.
         """
         self.logger.info("Performing configuration sync")
         self.config.read(f"{self.respath}local-device.ini")
@@ -128,22 +154,28 @@ class LocalManager(object):
 
     async def proces_io_deltas(self):
         """
-        This function creates and maintains a running instance of the bash inotifywait command
-        It listens for stdout and every time the config file is modified a new event record is
-        logged, and the 'sync' function runs.
+        This function runs forever in an io-loop task in app.py, it constantly checks current event count
+        to last known count and if current count is higher, it triggers a delta sink which notifies all
+        subscriber objects to update the corresponding configuration values. It's also in charge of running
+        the count reset function.
         """
-        last_event = 0
         while True:
-            current_event = self.get_event_count(f"{self.respath}ioevents")
-            self.logger.debug(f"current event#: {current_event} - last event#: {last_event}")
+            current_event = self.get_event_count(f"{self.respath}ini.events")
+            self.logger.debug(f"current event#: {current_event} - last event#: {self.last_event}")
 
-            if current_event > last_event:
+            if current_event > self.last_event:
+                self.logger.debug(f"Delta sink initiated - current: {current_event} - last: {self.last_event}")
                 self.sync()
-            if current_event >= 200:
-                last_event = 0
-                self.clear_events(f"{self.respath}ioevents")
+            elif current_event < self.last_event:
+                self.logger.debug(f"File lines and tally are out-of-sync - current: {current_event} - last: {self.last_event}")
+                self.last_event = current_event
+
+            if current_event > 10000:
+                self.logger.debug(f"Max number of events reached, resetting: {current_event}")
+                self.clear_events(f"{self.respath}ini.events")
+                self.last_event = 0
             else:
-                last_event = current_event
+                self.last_event = current_event
             await asyncio.sleep(60)
 
 
@@ -161,12 +193,8 @@ class Subscriber(ABC):
 
 class Option(object):
     """
-    The Option object is responsible for keeping the last known state for its parent section and its option value.
-    It also maintains a list of Subscription objects which Subscribers must create and pass as an argument when
-    calling to subscribe for change-of-value notifications for this option.
-    The opton object is also able to check its state with another instance of the same file option to check for deltas.
-    Lastly, the option object can notify its subscription base with the appropriate section and option state back to
-    the subscribers.
+    The Option object is responsible for keeping track of state
+    for its parent section and its option value.
     """
     def __init__(self, section: str, option: str, value):
         self.section = section

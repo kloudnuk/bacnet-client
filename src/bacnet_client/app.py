@@ -21,10 +21,10 @@ class Bacapp(object):
     __instance = None
 
     def __init__(self) -> None:
+        self.localMgr: LocalManager = LocalManager()
         self.localDevice = LocalBacnetDevice()
         self.app = NormalApplication(self.localDevice.deviceObject,
                                      self.localDevice.deviceAddress)
-        self.localMgr: LocalManager = LocalManager()
 
     def __new__(cls):
         if Bacapp.__instance is None:

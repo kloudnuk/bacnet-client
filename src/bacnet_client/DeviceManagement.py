@@ -30,9 +30,9 @@ class DeviceManager(Subscriber):
         self.address = Address("*")
         self.mongo = Mongodb()
         self.settings: dict = {
-            "enable": True,
-            "interval": 1440,
-            "timeout": 10
+            "enable": ("device-discovery", True),
+            "interval": ("device-discovery", 1440),
+            "timeout": ("device-discovery", 10)
         }
         self.logger = logging.getLogger('ClientLog')
 
@@ -41,8 +41,13 @@ class DeviceManager(Subscriber):
             DeviceManager.__instance = object.__new__(cls)
         return DeviceManager.__instance
 
-    def update(self, option, value):
-        self.settings[option] = value
+    def update(self, section, option, value):
+        self.logger.debug(f"performing ini update on {self.__instance}: validating config setting {section} - {option}")
+        if section in self.settings.get(option):
+            self.logger.debug(f"validated correct section: {self.settings.get(option)[0]}")
+            self.settings[option][1] = value
+        else:
+            self.logger.debug(f"Validation failed, section does not belong to this service: {self.settings.get(option)[0]}")
 
     async def run(self, bacapp):
         if self.app is None:

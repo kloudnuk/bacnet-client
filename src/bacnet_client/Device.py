@@ -7,7 +7,8 @@ from collections import OrderedDict
 from bacpypes3.pdu import IPv4Address
 from bacpypes3.local.device import DeviceObject
 from bacpypes3.basetypes import Segmentation
-from .SelfManagement import LocalManager
+# from .SelfManagement import (LocalManager,
+#                              Subscriber)
 
 
 class BacnetDevice():
@@ -230,9 +231,8 @@ class LocalBacnetDevice:
     __instance = None
 
     def __init__(self) -> None:
-        self.localMgr = LocalManager()
         self.config = configparser.ConfigParser()
-        self.config.read(f"{self.localMgr.respath}local-device.ini")
+        self.config.read('../res/local-device.ini')
         self.objId = self.config.get("device", "objectIdentifier")
         self.objName = self.config.get("device", "objectName")
         self.maxApduLength = self.config.get("network", "maxApduLengthAccepted")
