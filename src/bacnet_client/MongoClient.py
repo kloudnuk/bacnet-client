@@ -1,35 +1,48 @@
 
 import sys
-import configparser
 import logging
 from pymongo.server_api import ServerApi
 from motor.motor_asyncio import AsyncIOMotorClient
+from .SelfManagement import (LocalManager,
+                             Subscriber)
 
 
-class Mongodb():
+class Mongodb(Subscriber):
 
     """
     MongoDB client singleton connects to the database server, and performs all CRUD operations
     """
 
     __instance = None
+    __ini_section = "mongodb"
 
     def __init__(self) -> None:
-        self.config = configparser.ConfigParser()
-        self.config.read('../res/local-device.ini')
-        self.uri: str = str(self.config.get("mongodb", "connectionString"))
+        self.localMgr: LocalManager = LocalManager()
+        self.settings = {
+            "section": Mongodb.__ini_section,
+            "connectionString": self.localMgr.read_setting(Mongodb.__ini_section, "connectionString"),
+            "certpath": self.localMgr.read_setting(Mongodb.__ini_section, "certpath"),
+            "dbname": self.localMgr.read_setting(Mongodb.__ini_section, "dbname")
+        }
         self.client: AsyncIOMotorClient = \
-            AsyncIOMotorClient(self.uri,
+            AsyncIOMotorClient(self.settings.get("connectionString"),
                                tls=True,
-                               tlsCertificateKeyFile=self.config
-                               .get("mongodb",
-                                    "certpath"), server_api=ServerApi('1'))
+                               tlsCertificateKeyFile=self.settings.get("certpath"),
+                               server_api=ServerApi('1'))
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
         if Mongodb.__instance is None:
             Mongodb.__instance = object.__new__(cls)
         return Mongodb.__instance
+
+    def update(self, section, option, value):
+        self.logger.debug(f"performing ini update on {self}: validating config setting {section} - {option}")
+        if section in self.settings.get("section"):
+            self.logger.debug(f"validated correct section: {self.settings.get('section')}")
+            oldvalue = self.settings.get(option)
+            self.settings[option] = value
+            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
 
     async def pingServer(self):
         try:
@@ -42,9 +55,7 @@ class Mongodb():
 
     def getDb(self):
         try:
-            self.config.read('../res/local-device.ini')
-            dbName = self.config.get("mongodb", "dbname")
-            return self.client[dbName]
+            return self.client[self.settings.get("dbname")]
         except Exception as e:
             self.logger.critical(f"{e}")
             return None

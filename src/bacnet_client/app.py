@@ -5,6 +5,7 @@ import queue
 import json
 import re
 from logging.handlers import QueueHandler
+import time
 from bacpypes3.ipv4.app import NormalApplication
 from .Device import LocalBacnetDevice
 from .MongoClient import Mongodb
@@ -21,7 +22,12 @@ class Bacapp(object):
     __instance = None
 
     def __init__(self) -> None:
+        loadString = "Initializing application manager ..."
         self.localMgr: LocalManager = LocalManager()
+        while self.localMgr.initialized is not True:
+            progressString = loadString + "."
+            print(progressString)
+            time.sleep(1)
         self.clients = {
             "mongodb": Mongodb()
         }

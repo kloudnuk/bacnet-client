@@ -77,14 +77,7 @@ class LocalManager(object):
 
     def read_setting(self, section, prop):
         self.config.read(f"{self.respath}local-device.ini")
-        setting = str(self.config.get(section, prop))
-        if prop == "enable":
-            if setting == "True":
-                setting = True
-            else:
-                setting = False
-        elif prop == "interval" or prop == "timeout":
-            setting = int(setting)
+        setting = self.set_type(self.config.get(section, prop))
         return setting
 
     @classmethod
