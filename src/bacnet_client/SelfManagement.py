@@ -81,7 +81,7 @@ class LocalManager(object):
         return setting
 
     @classmethod
-    def set_type(self, value):
+    def set_type(self, value, option=None):
         """
         Provide type guarantee for the configuration setting's values as they are updated
         and sent to subscribers.

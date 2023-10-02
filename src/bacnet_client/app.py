@@ -34,6 +34,7 @@ class Bacapp(object):
         self.localDevice = LocalBacnetDevice()
         self.app = NormalApplication(self.localDevice.deviceObject,
                                      self.localDevice.deviceAddress)
+        self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
         if Bacapp.__instance is None:
@@ -92,6 +93,7 @@ async def main():
         deviceMgr = dm.DeviceManager()
         pointMgr = pm.PointManager()
         pollSrv = pp.PollService()
+        bacapp.logger.debug(f"LOCAL DEVICE : {bacapp.localDevice}")
 
         io_delta_task = loop.create_task(bacapp.localMgr.proces_io_deltas())
         devMgr_task = loop.create_task(deviceMgr.run(bacapp))

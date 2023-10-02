@@ -3,7 +3,7 @@ import sys
 import json
 import pytz
 import logging
-import configparser
+import time
 from collections import OrderedDict
 from bacpypes3.pdu import IPv4Address
 from bacpypes3.local.device import DeviceObject
@@ -233,7 +233,13 @@ class LocalBacnetDevice(Subscriber):
     __ini_sections = ('device', 'network')
 
     def __init__(self) -> None:
+        self.segmentation = Segmentation.segmentedBoth
+        loadString = "Initializing application manager ..."
         self.localMgr: LocalManager = LocalManager()
+        while self.localMgr.initialized is not True:
+            progressString = loadString + "."
+            print(progressString)
+            time.sleep(1)
         self.settings: dict = {
             "section": LocalBacnetDevice.__ini_sections,
             "objectIdentifier": self.localMgr.read_setting(LocalBacnetDevice.__ini_sections[0],
@@ -256,17 +262,6 @@ class LocalBacnetDevice(Subscriber):
         if self.localMgr.initialized is True:
             self.localMgr.subscribe(self.__instance)
 
-        self.config = configparser.ConfigParser()
-        self.config.read('../res/local-device.ini')
-        self.objId = self.config.get("device", "objectIdentifier")
-        self.objName = self.config.get("device", "objectName")
-        self.maxApduLength = self.config.get("network", "maxApduLengthAccepted")
-        self.segmentation = Segmentation.segmentedBoth
-        self.maxSegments = self.config.get("network", "maxSegmentsAccepted")
-        self.vendorId = self.config.get("device", "vendorIdentifier")
-        self.localAddress = self.config.get("network", "interface")
-        self.tz = pytz.timezone(self.config.get("device", "tz"))
-
     def __new__(cls):
         if LocalBacnetDevice.__instance is None:
             LocalBacnetDevice.__instance = object.__new__(cls)
@@ -277,7 +272,7 @@ class LocalBacnetDevice(Subscriber):
         if section in self.settings.get("section")[0]:
             self.logger.debug(f"validated correct section: {self.settings.get('section')[0]}")
             oldvalue = self.settings.get(option)
-            self.settings[option] = value
+            self.settings[option] = pytz.timezone(value)
             self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
         elif section in self.settings.get("section")[1]:
             self.logger.debug(f"validated correct section: {self.settings.get('section')[1]}")
@@ -287,27 +282,27 @@ class LocalBacnetDevice(Subscriber):
 
     def __str__(self) -> str:
         return f"""
-            id: {self.objId}
-            address: {self.localAddress}
-            name: {self.objName}
-            max apdu: {self.maxApduLength}
+            id: {self.settings.get("objectIdentifier")}
+            address: {self.settings.get("interface")}
+            name: {self.settings.get("objectName")}
+            max apdu: {self.settings.get("maxApduLengthAccepted")}
             segmentation: {str(self.segmentation)}
-            max segments: {self.maxSegments}
-            vendor id: {self.vendorId}
-            timezone: {self.tz}
+            max segments: {self.settings.get("maxSegmentsAccepted")}
+            vendor id: {self.settings.get("vendorIdentifier")}
+            timezone: {self.settings.get("tz")}
             """
 
     @property
     def deviceObject(self):
         return DeviceObject(
-            objectIdentifier=("device", self.objId),
-            objectName=self.objName,
-            maxApduLengthAccepted=self.maxApduLength,
+            objectIdentifier=("device", self.settings.get("objectIdentifier")),
+            objectName=self.settings.get("objectName"),
+            maxApduLengthAccepted=self.settings.get("maxApduLengthAccepted"),
             segmentationSupported=self.segmentation,
-            maxSegmentsAccepted=self.maxSegments,
-            vendorIdentifier=self.vendorId
+            maxSegmentsAccepted=self.settings.get("maxSegmentsAccepted"),
+            vendorIdentifier=self.settings.get("vendorIdentifier")
         )
 
     @property
     def deviceAddress(self):
-        return IPv4Address(self.localAddress)
+        return IPv4Address(self.settings.get("interface"))
