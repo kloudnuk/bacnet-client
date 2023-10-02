@@ -31,6 +31,9 @@ class Mongodb(Subscriber):
                                server_api=ServerApi('1'))
         self.logger = logging.getLogger('ClientLog')
 
+        if self.localMgr.initialized is True:
+            self.localMgr.subscribe(self.__instance)
+
     def __new__(cls):
         if Mongodb.__instance is None:
             Mongodb.__instance = object.__new__(cls)

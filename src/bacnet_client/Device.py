@@ -2,13 +2,14 @@
 import sys
 import json
 import pytz
+import logging
 import configparser
 from collections import OrderedDict
 from bacpypes3.pdu import IPv4Address
 from bacpypes3.local.device import DeviceObject
 from bacpypes3.basetypes import Segmentation
-# from .SelfManagement import (LocalManager,
-#                              Subscriber)
+from .SelfManagement import (LocalManager,
+                             Subscriber)
 
 
 class BacnetDevice():
@@ -221,7 +222,7 @@ class BacnetDevice():
             return "not-supported"
 
 
-class LocalBacnetDevice:
+class LocalBacnetDevice(Subscriber):
 
     """
     The client does not need to expose any services nor listen for network requests so it only implements
@@ -229,8 +230,32 @@ class LocalBacnetDevice:
     """
 
     __instance = None
+    __ini_sections = ('device', 'network')
 
     def __init__(self) -> None:
+        self.localMgr: LocalManager = LocalManager()
+        self.settings: dict = {
+            "section": LocalBacnetDevice.__ini_sections,
+            "objectIdentifier": self.localMgr.read_setting(LocalBacnetDevice.__ini_sections[0],
+                                                           "objectIdentifier"),
+            "objectName": self.localMgr.read_setting(LocalBacnetDevice.__ini_sections[0],
+                                                     "objectName"),
+            "vendorIdentifier": self.localMgr.read_setting(LocalBacnetDevice.__ini_sections[0],
+                                                           "vendorIdentifier"),
+            "tz": pytz.timezone(self.localMgr.read_setting(LocalBacnetDevice.__ini_sections[0],
+                                                           "tz")),
+            "maxApduLengthAccepted": self.localMgr.read_setting(LocalBacnetDevice.__ini_sections[1],
+                                                                "maxApduLengthAccepted"),
+            "maxSegmentsAccepted": self.localMgr.read_setting(LocalBacnetDevice.__ini_sections[1],
+                                                              "maxSegmentsAccepted"),
+            "interface": self.localMgr.read_setting(LocalBacnetDevice.__ini_sections[1],
+                                                    "interface")
+        }
+        self.logger = logging.getLogger('ClientLog')
+
+        if self.localMgr.initialized is True:
+            self.localMgr.subscribe(self.__instance)
+
         self.config = configparser.ConfigParser()
         self.config.read('../res/local-device.ini')
         self.objId = self.config.get("device", "objectIdentifier")
@@ -246,6 +271,19 @@ class LocalBacnetDevice:
         if LocalBacnetDevice.__instance is None:
             LocalBacnetDevice.__instance = object.__new__(cls)
         return LocalBacnetDevice.__instance
+
+    def update(self, section, option, value):
+        self.logger.debug(f"performing ini update on {self}: validating config setting {section} - {option}")
+        if section in self.settings.get("section")[0]:
+            self.logger.debug(f"validated correct section: {self.settings.get('section')[0]}")
+            oldvalue = self.settings.get(option)
+            self.settings[option] = value
+            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
+        elif section in self.settings.get("section")[1]:
+            self.logger.debug(f"validated correct section: {self.settings.get('section')[1]}")
+            oldvalue = self.settings.get(option)
+            self.settings[option] = value
+            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
 
     def __str__(self) -> str:
         return f"""

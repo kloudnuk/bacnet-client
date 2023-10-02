@@ -4,7 +4,8 @@ import logging
 import asyncio
 from collections import OrderedDict
 from .Device import LocalBacnetDevice
-from .SelfManagement import Subscriber
+from .SelfManagement import (LocalManager,
+                             Subscriber)
 import bacnet_client.Point as pt
 import bacnet_client.PointPolling as pp
 from bacpypes3.ipv4.app import NormalApplication
@@ -16,12 +17,13 @@ class PointManager(Subscriber):
     a collection of points on the database for each device already on the database.
     """
 
-    __og_fp = '../res/object-graph.pkl'
     __instance = None
 
     def __init__(self) -> None:
         self.app: NormalApplication = None
         self.poller: pp.PollService = None
+        self.localMgr: LocalManager = None
+        self.og_fp = None
         self.mongo = None
         self.deviceSpecs = []
         self.object_graph = {}
@@ -53,8 +55,11 @@ class PointManager(Subscriber):
             self.app = bacapp.app
         if self.mongo is None:
             self.mongo = bacapp.clients.get("mongodb")
+        if self.localMgr is None:
+            self.localMgr = bacapp.localMgr
 
         if bacapp.localMgr.initialized is True:
+            self.og_fp = self.localMgr.respath + "object-graph.pkl"
             bacapp.localMgr.subscribe(self.__instance)
 
         while bool(self.settings.get("enable")):
@@ -81,7 +86,7 @@ class PointManager(Subscriber):
                                                                    '_id': 0})
 
             try:
-                with open(PointManager.__og_fp, 'wb') as object_graph:
+                with open(self.og_fp, 'wb') as object_graph:
                     object_graph.flush()
             except:  # noqa: E722
                 self.logger.critical("ERROR Unable to persist object graph to file...!")
@@ -137,7 +142,7 @@ class PointManager(Subscriber):
                             await point.build()
                             pointList[str(point.obj)] = point.spec
 
-                    with open(PointManager.__og_fp, 'wb') as object_graph:
+                    with open(self.og_fp, 'wb') as object_graph:
                         try:
                             pickle.dump(self.object_graph, object_graph)
                         except:  # noqa: E722

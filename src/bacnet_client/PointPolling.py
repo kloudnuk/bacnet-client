@@ -80,7 +80,7 @@ class PollService(Subscriber):
 
     async def load_pointLists(self):
         try:
-            with open('../res/object-graph.pkl', 'rb') as object_graph:
+            with open(f"{self.localMgr.respath}object-graph.pkl", 'rb') as object_graph:
                 self.object_graph: dict = pickle.load(object_graph)
             for k, v in self.object_graph.items():
                 self.logger.info(f"\npolling {k}")
