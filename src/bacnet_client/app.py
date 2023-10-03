@@ -1,5 +1,6 @@
 
 import asyncio
+import functools
 import logging
 import queue
 import json
@@ -14,10 +15,11 @@ from .MongoClient import Mongodb
 import bacnet_client.DeviceManagement as dm
 import bacnet_client.PointManagement as pm
 import bacnet_client.PointPolling as pp
-from .SelfManagement import LocalManager
+from .SelfManagement import (LocalManager,
+                             Subscriber)
 
 
-class Bacapp(object):
+class Bacapp(Subscriber):
 
     __instance = None
 
@@ -36,10 +38,16 @@ class Bacapp(object):
                                      self.localDevice.deviceAddress)
         self.logger = logging.getLogger('ClientLog')
 
+        if self.localMgr.initialized is True:
+            self.localMgr.subscribe(self.__instance)
+
     def __new__(cls):
         if Bacapp.__instance is None:
             Bacapp.__instance = object.__new__(cls)
         return Bacapp.__instance
+
+    def update(self, section, option, value):
+        self.logger.debug("app.update still TODO")
 
 
 class JsonFormatter(logging.Formatter):
@@ -53,6 +61,11 @@ class JsonFormatter(logging.Formatter):
             'line': record.lineno
         }
         return json.dumps(log_data, ensure_ascii=False)
+
+
+def do_log_exit(bacapp):
+    bacapp.logger.info("Client application stopping:")
+    bacapp.logger.info(None)
 
 
 async def log(q, mongo):
@@ -93,29 +106,29 @@ async def main():
         deviceMgr = dm.DeviceManager()
         pointMgr = pm.PointManager()
         pollSrv = pp.PollService()
-        bacapp.logger.debug(f"LOCAL DEVICE : {bacapp.localDevice}")
 
-        io_delta_task = loop.create_task(bacapp.localMgr.proces_io_deltas())
-        devMgr_task = loop.create_task(deviceMgr.run(bacapp))
-        pointMgr_task = loop.create_task(pointMgr.run(bacapp))
-        pollMgr_task = loop.create_task(pollSrv.run(bacapp))
-        logger_task = loop.create_task(log(logQ, bacapp.clients.get("mongodb")))
+        app_tasks: dict = {
+            "local-device-ini": loop.create_task(bacapp.localMgr.proces_io_deltas(),
+                                                 name="local-device-ini"),
+            "client-log": loop.create_task(log(logQ, bacapp.clients.get("mongodb")),
+                                           name="client-log"),
+            deviceMgr.settings.get("section"): loop.create_task(deviceMgr.run(bacapp),
+                                                                name=deviceMgr.settings.get("section")),
+            pointMgr.settings.get("section"): loop.create_task(pointMgr.run(bacapp),
+                                                               name=pointMgr.settings.get("section")),
+            pollSrv.settings.get("section"): loop.create_task(pollSrv.run(bacapp),
+                                                              name=pollSrv.settings.get("section"))
+        }
 
-        await io_delta_task
-        await devMgr_task
-        await pointMgr_task
-        await pollMgr_task
-        await logger_task
+        app_tasks.get("client-log").add_done_callback(functools.partial(do_log_exit, bacapp))
+
+        for k, v in app_tasks.items():
+            bacapp.logger.info(f"{k} service initialized...")
+            await v
 
     finally:
-        io_delta_task.cancel()
-        bacapp.app.close()
-        devMgr_task.cancel()
-        pointMgr_task.cancel()
-        pollMgr_task.cancel()
-        logger.info("Client application stopping:")
-        logger.info(None)
-        logger_task.cancel()
+        for k, v in app_tasks.items():
+            v.cancel()
 
 if __name__ == "__main__":
     asyncio.run(main())

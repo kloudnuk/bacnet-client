@@ -101,7 +101,7 @@ class DeviceManager(Subscriber):
 
             device: BacnetDevice = BacnetDevice(id, str(iamDict[id]), propDict)
 
-            endTime = dt.datetime.now(tz=self.localDevice.tz) \
+            endTime = dt.datetime.now(tz=self.localDevice.settings.get("tz")) \
                                  .strftime(DeviceManager.__ISO8601)
 
             device.spec["last synced"] = endTime
