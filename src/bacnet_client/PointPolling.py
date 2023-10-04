@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import pickle
+
 from .Device import LocalBacnetDevice
 from .Point import BacnetPoint
 from .SelfManagement import (LocalManager,
@@ -29,8 +30,8 @@ class PollService(Subscriber):
         self.logger = logging.getLogger('ClientLog')
         self.settings = {
             "section": "point-polling",
-            "enable": True,
-            "interval": 5
+            "enable": None,
+            "interval": None
         }
 
     def __new__(cls):
@@ -39,12 +40,14 @@ class PollService(Subscriber):
         return PollService.__instance
 
     def update(self, section, option, value):
-        self.logger.debug(f"performing ini update on {self}: validating config setting {section} - {option}")
+        self.logger.debug(f"performing ini update on {self}: \
+                          validating config setting {section} - {option}")
         if section in self.settings.get("section"):
             self.logger.debug(f"validated correct section: {self.settings.get('section')}")
             oldvalue = self.settings.get(option)
             self.settings[option] = value
-            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
+            self.logger.debug(f"{section} > {option} has been updated \
+                              from {oldvalue} to {self.settings.get(option)}")
 
     async def run(self, bacapp):
         if self.app is None:
@@ -54,6 +57,14 @@ class PollService(Subscriber):
 
         if bacapp.localMgr.initialized is True:
             bacapp.localMgr.subscribe(self.__instance)
+
+        self.settings['enable'] = self.localMgr.read_setting(self.settings.get("section"),
+                                                             "enable")
+        self.settings['interval'] = self.localMgr.read_setting(self.settings.get("section"),
+                                                               "interval")
+        bacapp.service_state[self.settings.get("section")] = bool(self.settings.get("enable"))
+        self.logger.debug(f"Polling Service Active State: \
+                          {bacapp.service_state[self.settings.get('section')]}")
 
         while bool(self.settings.get("enable")):
             await self.poll()

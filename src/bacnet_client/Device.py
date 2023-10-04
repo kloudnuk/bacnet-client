@@ -268,17 +268,21 @@ class LocalBacnetDevice(Subscriber):
         return LocalBacnetDevice.__instance
 
     def update(self, section, option, value):
-        self.logger.debug(f"performing ini update on {self}: validating config setting {section} - {option}")
+        self.logger.debug(f"performing ini update on {self}: \
+                          validating config setting {section} - {option}")
         if section in self.settings.get("section")[0]:
-            self.logger.debug(f"validated correct section: {self.settings.get('section')[0]}")
+            self.logger.debug(f"validated correct section: \
+                              {self.settings.get('section')[0]}")
             oldvalue = self.settings.get(option)
             self.settings[option] = pytz.timezone(value)
-            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
+            self.logger.debug(f"{section} > {option} has been updated from \
+                              {oldvalue} to {self.settings.get(option)}")
         elif section in self.settings.get("section")[1]:
             self.logger.debug(f"validated correct section: {self.settings.get('section')[1]}")
             oldvalue = self.settings.get(option)
             self.settings[option] = value
-            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
+            self.logger.debug(f"{section} > {option} has been updated from \
+                              {oldvalue} to {self.settings.get(option)}")
 
     def __str__(self) -> str:
         return f"""

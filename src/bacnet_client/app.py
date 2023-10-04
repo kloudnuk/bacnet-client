@@ -33,6 +33,7 @@ class Bacapp(Subscriber):
         self.clients = {
             "mongodb": Mongodb()
         }
+        self.service_state: dict = {}
         self.localDevice = LocalBacnetDevice()
         self.app = NormalApplication(self.localDevice.deviceObject,
                                      self.localDevice.deviceAddress)
@@ -90,9 +91,12 @@ async def log(q, mongo):
 
 async def main():
     """
-    Run or schedule all your services from this entry-point script.
+    Initialize the application and control services from this entry-point script.
     """
     try:
+        # Initialize application services.
+        # Logger instances push to a queue, the consumer pulls from the queue every second
+        # and sends the logs to MongoDb.
         ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
         loop = asyncio.get_running_loop()
         logQ = queue.Queue()
@@ -107,19 +111,16 @@ async def main():
         pointMgr = pm.PointManager()
         pollSrv = pp.PollService()
 
+        # Initialize application task registry.
         app_tasks: dict = {
-            "local-device-ini": loop.create_task(bacapp.localMgr.proces_io_deltas(),
-                                                 name="local-device-ini"),
-            "client-log": loop.create_task(log(logQ, bacapp.clients.get("mongodb")),
-                                           name="client-log"),
-            deviceMgr.settings.get("section"): loop.create_task(deviceMgr.run(bacapp),
-                                                                name=deviceMgr.settings.get("section")),
-            pointMgr.settings.get("section"): loop.create_task(pointMgr.run(bacapp),
-                                                               name=pointMgr.settings.get("section")),
-            pollSrv.settings.get("section"): loop.create_task(pollSrv.run(bacapp),
-                                                              name=pollSrv.settings.get("section"))
+            "local-device-ini": loop.create_task(bacapp.localMgr.proces_io_deltas()),
+            "client-log": loop.create_task(log(logQ, bacapp.clients.get("mongodb"))),
+            deviceMgr.settings.get("section"): loop.create_task(deviceMgr.run(bacapp)),
+            pointMgr.settings.get("section"): loop.create_task(pointMgr.run(bacapp)),
+            pollSrv.settings.get("section"): loop.create_task(pollSrv.run(bacapp))
         }
 
+        # Register task callbacks here.
         app_tasks.get("client-log").add_done_callback(functools.partial(do_log_exit, bacapp))
 
         for k, v in app_tasks.items():
