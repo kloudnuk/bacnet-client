@@ -15,40 +15,57 @@ from .MongoClient import Mongodb
 import bacnet_client.DeviceManagement as dm
 import bacnet_client.PointManagement as pm
 import bacnet_client.PointPolling as pp
-from .SelfManagement import (LocalManager,
-                             Subscriber)
+from .SelfManagement import LocalManager
 
 
-class Bacapp(Subscriber):
+class Bacapp():
 
     __instance = None
 
     def __init__(self) -> None:
+        self.loop = None
         loadString = "Initializing application manager ..."
         self.localMgr: LocalManager = LocalManager()
         while self.localMgr.initialized is not True:
             progressString = loadString + "."
             print(progressString)
             time.sleep(1)
-        self.clients = {
-            "mongodb": Mongodb()
-        }
-        self.service_state: dict = {}
+
         self.localDevice = LocalBacnetDevice()
         self.app = NormalApplication(self.localDevice.deviceObject,
                                      self.localDevice.deviceAddress)
+        self.clients = {
+            "mongodb": Mongodb()
+        }
+        self.services = {
+            "deviceMgr": dm.DeviceManager(),
+            "pointMgr": pm.PointManager(),
+            "pollSrv": pp.PollService()
+        }
+        self.tasks: dict = {}
         self.logger = logging.getLogger('ClientLog')
-
-        if self.localMgr.initialized is True:
-            self.localMgr.subscribe(self.__instance)
 
     def __new__(cls):
         if Bacapp.__instance is None:
             Bacapp.__instance = object.__new__(cls)
         return Bacapp.__instance
 
-    def update(self, section, option, value):
-        self.logger.debug("app.update still TODO")
+    async def run(self):
+        while True:
+            for service, object in self.services.items():
+                enable = bool(self.localMgr.read_setting(
+                    object.settings.get("section"), "enable"))
+                self.logger.debug(f"{service} status: {enable}")
+                if enable is True:
+                    if service not in self.tasks.keys():
+                        self.tasks[service] = self.loop.create_task(object.run(self))
+                        self.logger.info(f"Loading {service}")
+
+            for k, v in self.tasks.items():
+                if v.done() is True:
+                    self.tasks.pop(k)
+
+            await asyncio.sleep(5)
 
 
 class JsonFormatter(logging.Formatter):
@@ -91,7 +108,7 @@ async def log(q, mongo):
 
 async def main():
     """
-    Initialize the application and control services from this entry-point script.
+    Entry-point script.
     """
     try:
         # Initialize application services.
@@ -107,29 +124,22 @@ async def main():
         logger.setLevel(logging.DEBUG)
 
         bacapp = Bacapp()
-        deviceMgr = dm.DeviceManager()
-        pointMgr = pm.PointManager()
-        pollSrv = pp.PollService()
+        bacapp.loop = loop
 
-        # Initialize application task registry.
-        app_tasks: dict = {
-            "local-device-ini": loop.create_task(bacapp.localMgr.proces_io_deltas()),
-            "client-log": loop.create_task(log(logQ, bacapp.clients.get("mongodb"))),
-            deviceMgr.settings.get("section"): loop.create_task(deviceMgr.run(bacapp)),
-            pointMgr.settings.get("section"): loop.create_task(pointMgr.run(bacapp)),
-            pollSrv.settings.get("section"): loop.create_task(pollSrv.run(bacapp))
-        }
+        log_task = loop.create_task(log(logQ, bacapp.clients.get("mongodb")))
+        log_task.add_done_callback(functools.partial(do_log_exit, bacapp))
+        ini_task = loop.create_task(bacapp.localMgr.proces_io_deltas())
+        main_task = loop.create_task(bacapp.run())
 
-        # Register task callbacks here.
-        app_tasks.get("client-log").add_done_callback(functools.partial(do_log_exit, bacapp))
-
-        for k, v in app_tasks.items():
-            bacapp.logger.info(f"{k} service initialized...")
-            await v
+        await ini_task
+        await log_task
+        await main_task
 
     finally:
-        for k, v in app_tasks.items():
-            v.cancel()
+        ini_task.cancel()
+        log_task.cancel()
+        main_task.cancel()
+        loop.close()
 
 if __name__ == "__main__":
     asyncio.run(main())

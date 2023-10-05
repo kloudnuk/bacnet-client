@@ -62,10 +62,6 @@ class PollService(Subscriber):
                                                              "enable")
         self.settings['interval'] = self.localMgr.read_setting(self.settings.get("section"),
                                                                "interval")
-        bacapp.service_state[self.settings.get("section")] = bool(self.settings.get("enable"))
-        self.logger.debug(f"Polling Service Active State: \
-                          {bacapp.service_state[self.settings.get('section')]}")
-
         while bool(self.settings.get("enable")):
             await self.poll()
             await asyncio.sleep(int(self.settings.get("interval")) * 60)
