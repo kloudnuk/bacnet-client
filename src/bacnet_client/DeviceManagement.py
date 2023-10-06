@@ -1,5 +1,4 @@
 
-import asyncio
 import logging
 import datetime as dt
 from .Device import LocalBacnetDevice, BacnetDevice
@@ -57,11 +56,8 @@ class DeviceManager(Subscriber):
 
         if bacapp.localMgr.initialized is True:
             bacapp.localMgr.subscribe(self.__instance)
-
-        while bool(self.settings.get("enable")):
             await self.discover()
             await self.commit()
-            await asyncio.sleep(int(self.settings.get("interval")) * 60)
 
     async def discover(self):
         """ Sends a who-is broadcast to the subnet and stores a list of responses. It parses

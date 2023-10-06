@@ -42,7 +42,6 @@ class Bacapp():
             "pointMgr": pm.PointManager(),
             "pollSrv": pp.PollService()
         }
-        self.tasks: dict = {}
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
@@ -55,17 +54,9 @@ class Bacapp():
             for service, object in self.services.items():
                 enable = bool(self.localMgr.read_setting(
                     object.settings.get("section"), "enable"))
-                self.logger.debug(f"{service} status: {enable}")
                 if enable is True:
-                    if service not in self.tasks.keys():
-                        self.tasks[service] = self.loop.create_task(object.run(self))
-                        self.logger.info(f"Loading {service}")
-
-            for k, v in self.tasks.items():
-                if v.done() is True:
-                    self.tasks.pop(k)
-
-            await asyncio.sleep(5)
+                    t = self.loop.create_task(object.run(self), name=service)
+                    await t
 
 
 class JsonFormatter(logging.Formatter):
@@ -103,7 +94,6 @@ async def log(q, mongo):
                                               "Logs")
         except Exception as e:
             print(e)
-        await asyncio.sleep(1)
 
 
 async def main():
@@ -131,8 +121,6 @@ async def main():
         ini_task = loop.create_task(bacapp.localMgr.proces_io_deltas())
         main_task = loop.create_task(bacapp.run())
 
-        await ini_task
-        await log_task
         await main_task
 
     finally:

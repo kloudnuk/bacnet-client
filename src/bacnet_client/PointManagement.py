@@ -1,7 +1,6 @@
 
 import pickle
 import logging
-import asyncio
 from collections import OrderedDict
 from .Device import LocalBacnetDevice
 from .SelfManagement import (LocalManager,
@@ -61,11 +60,8 @@ class PointManager(Subscriber):
         if bacapp.localMgr.initialized is True:
             self.og_fp = self.localMgr.respath + "object-graph.pkl"
             bacapp.localMgr.subscribe(self.__instance)
-
-        while bool(self.settings.get("enable")):
             await self.discover()
             await self.commit()
-            await asyncio.sleep(int(self.settings.get("interval")) * 60)
 
     async def discover(self):
         """

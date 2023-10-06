@@ -153,7 +153,6 @@ class LocalManager(object):
         """
         while True:
             current_event = self.get_event_count(f"{self.respath}ini.events")
-            self.logger.debug(f"current event#: {current_event} - last event#: {self.last_event}")
 
             if current_event > self.last_event:
                 self.logger.debug(f"Delta sink initiated - current: {current_event} - last: {self.last_event}")
@@ -162,7 +161,7 @@ class LocalManager(object):
                 self.logger.debug(f"File lines and tally are out-of-sync - current: {current_event} - last: {self.last_event}")
                 self.last_event = current_event
 
-            if current_event > 10000:
+            if current_event > 5000:
                 self.logger.debug(f"Max number of events reached, resetting: {current_event}")
                 self.clear_events(f"{self.respath}ini.events")
                 self.last_event = 0

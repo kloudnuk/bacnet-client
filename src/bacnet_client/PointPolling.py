@@ -1,8 +1,6 @@
 
-import asyncio
 import logging
 import pickle
-
 from .Device import LocalBacnetDevice
 from .Point import BacnetPoint
 from .SelfManagement import (LocalManager,
@@ -58,13 +56,11 @@ class PollService(Subscriber):
         if bacapp.localMgr.initialized is True:
             bacapp.localMgr.subscribe(self.__instance)
 
-        self.settings['enable'] = self.localMgr.read_setting(self.settings.get("section"),
-                                                             "enable")
-        self.settings['interval'] = self.localMgr.read_setting(self.settings.get("section"),
-                                                               "interval")
-        while bool(self.settings.get("enable")):
+            self.settings['enable'] = self.localMgr.read_setting(self.settings.get("section"),
+                                                                 "enable")
+            self.settings['interval'] = self.localMgr.read_setting(self.settings.get("section"),
+                                                                   "interval")
             await self.poll()
-            await asyncio.sleep(int(self.settings.get("interval")) * 60)
 
     async def poll(self):
         """
