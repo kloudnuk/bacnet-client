@@ -38,22 +38,20 @@ class PollService(Subscriber):
         return PollService.__instance
 
     def update(self, section, option, value):
-        self.logger.debug(f"performing ini update on {self}: \
-                          validating config setting {section} - {option}")
         if section in self.settings.get("section"):
-            self.logger.debug(f"validated correct section: {self.settings.get('section')}")
             oldvalue = self.settings.get(option)
             self.settings[option] = value
-            self.logger.debug(f"{section} > {option} has been updated \
+            self.logger.debug(f"{section} > {option} updated \
                               from {oldvalue} to {self.settings.get(option)}")
 
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
-        if self.mongo is None:
-            self.mongo = bacapp.clients.get("mongodb")
 
         if bacapp.localMgr.initialized is True:
+            if self.mongo is None:
+                self.mongo = bacapp.clients.get("mongodb")
+
             bacapp.localMgr.subscribe(self.__instance)
 
             self.settings['enable'] = self.localMgr.read_setting(self.settings.get("section"),
@@ -74,7 +72,7 @@ class PollService(Subscriber):
         await self.load_pointLists()
 
         for k, v in self.object_graph.items():
-            self.logger.debug(f"\ncommitting poll to db {k}")
+            self.logger.debug(f"committing poll to db {k}")
             await self.mongo \
                 .updateFields(self.mongo.getDb(), "Points",
                               {"id": k},
@@ -86,12 +84,12 @@ class PollService(Subscriber):
             with open(f"{self.localMgr.respath}object-graph.pkl", 'rb') as object_graph:
                 self.object_graph: dict = pickle.load(object_graph)
             for k, v in self.object_graph.items():
-                self.logger.info(f"\npolling {k}")
+                self.logger.info(f"polling {k}")
                 self.poll_lists[k] = []
                 self.points_specs[k] = OrderedDict()
 
                 for key, value in self.object_graph[k].items():
-                    self.logger.debug(key)
+                    # self.logger.debug(key)
                     point: BacnetPoint = BacnetPoint(self.app,
                                                      self.localDevice,
                                                      value,

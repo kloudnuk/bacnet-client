@@ -31,8 +31,8 @@ class PointManager(Subscriber):
         self.highLimit = 4194303
         self.settings: dict = {
             "section": "point-discovery",
-            "enable": True,
-            "interval": 12  # minutes
+            "enable": None,
+            "interval": None  # minutes
         }
         self.logger = logging.getLogger('ClientLog')
 
@@ -42,24 +42,29 @@ class PointManager(Subscriber):
         return PointManager.__instance
 
     def update(self, section, option, value):
-        self.logger.debug(f"performing ini update on {self}: validating config setting {section} - {option}")
         if section in self.settings.get("section"):
-            self.logger.debug(f"validated correct section: {self.settings.get('section')}")
             oldvalue = self.settings.get(option)
             self.settings[option] = value
-            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
+            self.logger.debug(f"{section} > {option} updated from {oldvalue} to {self.settings.get(option)}")
 
     async def run(self, bacapp):
         if self.app is None:
             self.app = bacapp.app
         if self.mongo is None:
             self.mongo = bacapp.clients.get("mongodb")
-        if self.localMgr is None:
-            self.localMgr = bacapp.localMgr
 
         if bacapp.localMgr.initialized is True:
+            if self.localMgr is None:
+                self.localMgr = bacapp.localMgr
+
             self.og_fp = self.localMgr.respath + "object-graph.pkl"
+
             bacapp.localMgr.subscribe(self.__instance)
+
+            self.settings['enable'] = self.localMgr.read_setting(self.settings.get("section"),
+                                                                 "enable")
+            self.settings['interval'] = self.localMgr.read_setting(self.settings.get("section"),
+                                                                   "interval")
             await self.discover()
             await self.commit()
 

@@ -40,12 +40,10 @@ class Mongodb(Subscriber):
         return Mongodb.__instance
 
     def update(self, section, option, value):
-        self.logger.debug(f"performing ini update on {self}: validating config setting {section} - {option}")
         if section in self.settings.get("section"):
-            self.logger.debug(f"validated correct section: {self.settings.get('section')}")
             oldvalue = self.settings.get(option)
             self.settings[option] = value
-            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
+            self.logger.debug(f"{section} > {option} updated from {oldvalue} to {self.settings.get(option)}")
 
     async def pingServer(self):
         try:

@@ -110,7 +110,7 @@ class LocalManager(object):
         try:
             with open(file_path, "r") as file:
                 line_count = sum(1 for line in file)
-            self.logger.debug(f"{file_path} event count: {line_count}")
+            # self.logger.debug(f"{file_path} event count: {line_count}")
         except FileNotFoundError:
             self.logger.error(f"The file '{file_path}' was not found.")
         except Exception as e:
@@ -139,7 +139,7 @@ class LocalManager(object):
         self.logger.info("Performing configuration sync")
         self.config.read(f"{self.respath}local-device.ini")
         for option in self.options:
-            self.logger.debug(f"current in-memory: {option.section} - {option.option} - {option.value}")
+            self.logger.debug(f"{option.section} {option.option} {option.value}")
             update = self.set_type(self.config.get(option.section, option.option))
             option.value = update
             self.notify(option, update)

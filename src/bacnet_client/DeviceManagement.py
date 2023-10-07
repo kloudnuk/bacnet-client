@@ -5,7 +5,8 @@ from .Device import LocalBacnetDevice, BacnetDevice
 from bacpypes3.pdu import Address
 from bacpypes3.primitivedata import ObjectIdentifier
 from bacpypes3.apdu import AbortPDU, AbortReason
-from .SelfManagement import Subscriber
+from .SelfManagement import (LocalManager,
+                             Subscriber)
 
 
 class DeviceManager(Subscriber):
@@ -24,14 +25,15 @@ class DeviceManager(Subscriber):
         self.localDevice = LocalBacnetDevice()
         self.app = None
         self.mongo = None
+        self.localMgr: LocalManager = None
         self.lowLimit = 0
         self.highLimit = 4194303
         self.address = Address("*")
         self.settings = {
             "section": "device-discovery",
-            "enable": True,
-            "interval": 12,  # minutes
-            "timeout": 10    # seconds
+            "enable": None,
+            "interval": None,  # minutes
+            "timeout": None    # seconds
         }
         self.logger = logging.getLogger('ClientLog')
 
@@ -41,12 +43,11 @@ class DeviceManager(Subscriber):
         return DeviceManager.__instance
 
     def update(self, section, option, value):
-        self.logger.debug(f"performing ini update on {self}: validating config setting {section} - {option}")
         if section in self.settings.get("section"):
-            self.logger.debug(f"validated correct section: {self.settings.get('section')}")
             oldvalue = self.settings.get(option)
             self.settings[option] = value
-            self.logger.debug(f"{section} > {option} has been updated from {oldvalue} to {self.settings.get(option)}")
+            self.logger.debug(f"{section} > {option} \
+                              updated from {oldvalue} to {self.settings.get(option)}")
 
     async def run(self, bacapp):
         if self.app is None:
@@ -55,7 +56,18 @@ class DeviceManager(Subscriber):
             self.mongo = bacapp.clients.get("mongodb")
 
         if bacapp.localMgr.initialized is True:
+            if self.localMgr is None:
+                self.localMgr = bacapp.localMgr
+
             bacapp.localMgr.subscribe(self.__instance)
+
+            self.settings['enable'] = \
+                self.localMgr.read_setting(self.settings.get("section"), "enable")
+            self.settings['interval'] = \
+                self.localMgr.read_setting(self.settings.get("section"), "interval")
+            self.settings['timeout'] = \
+                self.localMgr.read_setting(self.settings.get("section"), "timeout")
+
             await self.discover()
             await self.commit()
 

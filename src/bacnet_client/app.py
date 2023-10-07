@@ -1,6 +1,5 @@
 
 import asyncio
-import functools
 import logging
 import queue
 import json
@@ -51,12 +50,13 @@ class Bacapp():
 
     async def run(self):
         while True:
+            tasks = []
             for service, object in self.services.items():
                 enable = bool(self.localMgr.read_setting(
                     object.settings.get("section"), "enable"))
                 if enable is True:
-                    t = self.loop.create_task(object.run(self), name=service)
-                    await t
+                    tasks.append(self.loop.create_task(object.run(self), name=service))
+            await asyncio.gather(*tasks)
 
 
 class JsonFormatter(logging.Formatter):
@@ -94,6 +94,7 @@ async def log(q, mongo):
                                               "Logs")
         except Exception as e:
             print(e)
+        await asyncio.sleep(1)
 
 
 async def main():
@@ -115,19 +116,14 @@ async def main():
 
         bacapp = Bacapp()
         bacapp.loop = loop
-
-        log_task = loop.create_task(log(logQ, bacapp.clients.get("mongodb")))
-        log_task.add_done_callback(functools.partial(do_log_exit, bacapp))
-        ini_task = loop.create_task(bacapp.localMgr.proces_io_deltas())
-        main_task = loop.create_task(bacapp.run())
-
-        await main_task
+        await asyncio.gather(
+            log(logQ, bacapp.clients.get("mongodb")),
+            bacapp.localMgr.proces_io_deltas(),
+            bacapp.run()
+        )
 
     finally:
-        ini_task.cancel()
-        log_task.cancel()
-        main_task.cancel()
-        loop.close()
+        print(f"{__file__} {__name__} finally statement reached...")
 
 if __name__ == "__main__":
     asyncio.run(main())

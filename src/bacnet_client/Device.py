@@ -71,34 +71,34 @@ class BacnetDevice():
         return hash((self.deviceId, self.address))
 
     def __add__(self, other) -> None:
-        if type(other) == BacnetDevice:
+        if isinstance(other) == BacnetDevice:
             for p in self.spec:
                 self.spec[p] = other.obj[p]
         else:
             raise Exception("Cannot merge (+) with a type other than BacnetDevice")
 
     def __eq__(self, other) -> bool:
-        if type(other) == BacnetDevice:
+        if isinstance(other) == BacnetDevice:
             return int(str(self.deviceId).split(",")[1]) == int(str(other.deviceId).split(",")[1]) and \
                 str(self.address) == str(other.address)
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
     def __ne__(self, other) -> bool:
-        if type(other) == BacnetDevice:
+        if isinstance(other) == BacnetDevice:
             return int(str(self.deviceId).split(",")[1]) != int(str(other.deviceId).split(",")[1]) and \
                 str(self.address) != str(other.address)
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
     def __lt__(self, other) -> bool:
-        if type(other) == BacnetDevice:
+        if isinstance(other) == BacnetDevice:
             return int(str(self.deviceId).split(",")[1]) < int(str(other.deviceId).split(",")[1])
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
     def __gt__(self, other) -> bool:
-        if type(other) == BacnetDevice:
+        if isinstance(other) == BacnetDevice:
             return int(str(self.deviceId).split(",")[1]) > int(str(other.deviceId).split(",")[1])
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
@@ -268,20 +268,15 @@ class LocalBacnetDevice(Subscriber):
         return LocalBacnetDevice.__instance
 
     def update(self, section, option, value):
-        self.logger.debug(f"performing ini update on {self}: \
-                          validating config setting {section} - {option}")
         if section in self.settings.get("section")[0]:
-            self.logger.debug(f"validated correct section: \
-                              {self.settings.get('section')[0]}")
             oldvalue = self.settings.get(option)
             self.settings[option] = pytz.timezone(value)
-            self.logger.debug(f"{section} > {option} has been updated from \
+            self.logger.debug(f"{section} > {option} updated from \
                               {oldvalue} to {self.settings.get(option)}")
         elif section in self.settings.get("section")[1]:
-            self.logger.debug(f"validated correct section: {self.settings.get('section')[1]}")
             oldvalue = self.settings.get(option)
             self.settings[option] = value
-            self.logger.debug(f"{section} > {option} has been updated from \
+            self.logger.debug(f"{section} > {option} updated from \
                               {oldvalue} to {self.settings.get(option)}")
 
     def __str__(self) -> str:
