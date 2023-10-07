@@ -34,6 +34,7 @@ class PointManager(Subscriber):
             "enable": None,
             "interval": None  # minutes
         }
+        self.subscribed = False
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
@@ -56,10 +57,11 @@ class PointManager(Subscriber):
         if bacapp.localMgr.initialized is True:
             if self.localMgr is None:
                 self.localMgr = bacapp.localMgr
+            if self.subscribed is False:
+                bacapp.localMgr.subscribe(self.__instance)
+                self.subscribed = True
 
             self.og_fp = self.localMgr.respath + "object-graph.pkl"
-
-            bacapp.localMgr.subscribe(self.__instance)
 
             self.settings['enable'] = self.localMgr.read_setting(self.settings.get("section"),
                                                                  "enable")
@@ -106,14 +108,15 @@ class PointManager(Subscriber):
                     #        All object types filtered into 'objList' will be parsed into the
                     #         object-graph for secondary services to derive data from.
                     objList = list(filter(lambda kind: 'analog-value' in kind
-                                          or 'analog-input' in kind
-                                          or 'analog-output' in kind
-                                          or 'binary-value' in kind
-                                          or 'binary-input' in kind
-                                          or 'binary-output' in kind
-                                          or 'multi-state-value' in kind
-                                          or 'multi-state-input' in kind
-                                          or 'multi-state-output' in kind, objListValue))
+                                          or 'analog-input' in kind  # noqa: W503
+                                          or 'analog-output' in kind  # noqa: W503
+                                          or 'binary-value' in kind  # noqa: W503
+                                          or 'binary-input' in kind  # noqa: W503
+                                          or 'binary-output' in kind  # noqa: W503
+                                          or 'multi-state-value' in kind  # noqa: W503
+                                          or 'multi-state-input' in kind  # noqa: W503
+                                          or 'multi-state-output' in kind, objListValue  # noqa: W503
+                                          ))
 
                     self.object_graph[device["id"]] = {}
 

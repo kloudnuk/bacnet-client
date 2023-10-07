@@ -71,34 +71,34 @@ class BacnetDevice():
         return hash((self.deviceId, self.address))
 
     def __add__(self, other) -> None:
-        if isinstance(other) == BacnetDevice:
+        if type(other) == BacnetDevice:  # noqa: E721
             for p in self.spec:
                 self.spec[p] = other.obj[p]
         else:
             raise Exception("Cannot merge (+) with a type other than BacnetDevice")
 
     def __eq__(self, other) -> bool:
-        if isinstance(other) == BacnetDevice:
+        if type(other) == BacnetDevice:  # noqa: E721
             return int(str(self.deviceId).split(",")[1]) == int(str(other.deviceId).split(",")[1]) and \
                 str(self.address) == str(other.address)
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
     def __ne__(self, other) -> bool:
-        if isinstance(other) == BacnetDevice:
+        if type(other) == BacnetDevice:  # noqa: E721
             return int(str(self.deviceId).split(",")[1]) != int(str(other.deviceId).split(",")[1]) and \
                 str(self.address) != str(other.address)
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
     def __lt__(self, other) -> bool:
-        if isinstance(other) == BacnetDevice:
+        if type(other) == BacnetDevice:  # noqa: E721
             return int(str(self.deviceId).split(",")[1]) < int(str(other.deviceId).split(",")[1])
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")
 
     def __gt__(self, other) -> bool:
-        if isinstance(other) == BacnetDevice:
+        if type(other) == BacnetDevice:  # noqa: E721
             return int(str(self.deviceId).split(",")[1]) > int(str(other.deviceId).split(",")[1])
         else:
             raise Exception("Cannot compare with a type other than BacnetDevice")

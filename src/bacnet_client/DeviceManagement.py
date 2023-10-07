@@ -35,6 +35,7 @@ class DeviceManager(Subscriber):
             "interval": None,  # minutes
             "timeout": None    # seconds
         }
+        self.subscribed = False
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
@@ -58,8 +59,9 @@ class DeviceManager(Subscriber):
         if bacapp.localMgr.initialized is True:
             if self.localMgr is None:
                 self.localMgr = bacapp.localMgr
-
-            bacapp.localMgr.subscribe(self.__instance)
+            if self.subscribed is False:
+                bacapp.localMgr.subscribe(self.__instance)
+                self.subscribed = True
 
             self.settings['enable'] = \
                 self.localMgr.read_setting(self.settings.get("section"), "enable")

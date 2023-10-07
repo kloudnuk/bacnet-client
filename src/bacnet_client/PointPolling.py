@@ -31,6 +31,7 @@ class PollService(Subscriber):
             "enable": None,
             "interval": None
         }
+        self.subscribed = False
 
     def __new__(cls):
         if PollService.__instance is None:
@@ -51,8 +52,9 @@ class PollService(Subscriber):
         if bacapp.localMgr.initialized is True:
             if self.mongo is None:
                 self.mongo = bacapp.clients.get("mongodb")
-
-            bacapp.localMgr.subscribe(self.__instance)
+            if self.subscribed is False:
+                bacapp.localMgr.subscribe(self.__instance)
+                self.subscribed = True
 
             self.settings['enable'] = self.localMgr.read_setting(self.settings.get("section"),
                                                                  "enable")
