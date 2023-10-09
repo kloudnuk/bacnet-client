@@ -1,6 +1,7 @@
 
 import asyncio
 import datetime
+import pytz
 import subprocess
 import logging
 import argparse
@@ -172,7 +173,19 @@ class LocalManager(object):
             await asyncio.sleep(60)
 
 
-class ServiceScheduler(object):
+class Subscriber(ABC):
+    """
+    This abstract class acts as an interface and any class extending it
+    must implement the update method so the Option's notify function can
+    call it for each of its subscribers. So any subscriber should extend
+    the interface by implementing the method signature.
+    """
+    @abstractmethod
+    def update(self, subscription):
+        pass
+
+
+class ServiceScheduler(Subscriber):
     """
     This service manages service execution timing. It keeps track of tickets each service opens
     when they run a task in the application loop, based on each service's own specific execution
@@ -203,8 +216,15 @@ class ServiceScheduler(object):
 
     __ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
     __instance = None
+    __ini_section = "device"
 
     def __init__(self) -> None:
+        self.localMgr: LocalManager = LocalManager()
+        self.settings = {
+            "section": ServiceScheduler.__ini_section,
+            "tz": pytz.timezone(self.localMgr.read_setting(ServiceScheduler.__ini_section,
+                                                           "tz")),
+        }
         self.tickets = {}
         self.expired_tickets = []
         self.logger = logging.getLogger('ClientLog')
@@ -214,9 +234,16 @@ class ServiceScheduler(object):
             ServiceScheduler.__instance = object.__new__(cls)
         return ServiceScheduler.__instance
 
+    def update(self, section, option, value):
+        if section in self.settings.get("section"):
+            oldvalue = self.settings.get(option)
+            self.settings[option] = value
+            self.logger.debug(f"{section}: {oldvalue} > {self.settings.get(option)}")
+
     def create_ticket(self, section: str, interval: int):  # interval is in seconds
-        now = datetime.datetime.now()
-        elapsed = datetime.datetime.fromtimestamp(float(now.timestamp() + interval))
+        now = datetime.datetime.now(tz=self.settings.get("tz"))
+        elapsed = datetime.datetime.fromtimestamp(float(now.timestamp() + interval),
+                                                  tz=self.settings.get("tz"))
         ticket = [now.timestamp(), elapsed.timestamp(), "active"]
         self.logger.debug(f"ticket created: {ticket}")
         self.logger.info(f"next {section} cycle on \
@@ -224,7 +251,7 @@ class ServiceScheduler(object):
         self.tickets[section] = ticket
 
     def check_ticket(self, section, interval=None):
-        now = datetime.datetime.now().timestamp()
+        now = datetime.datetime.now(tz=self.settings.get("tz")).timestamp()
         ticket = self.tickets.get(section)
         valid = False
 
@@ -254,18 +281,6 @@ class ServiceScheduler(object):
             self.update_tickets()
             self.remove_expired()
             await asyncio.sleep(10)
-
-
-class Subscriber(ABC):
-    """
-    This abstract class acts as an interface and any class extending it
-    must implement the update method so the Option's notify function can
-    call it for each of its subscribers. So any subscriber should extend
-    the interface by implementing the method signature.
-    """
-    @abstractmethod
-    def update(self, subscription):
-        pass
 
 
 class Option(object):

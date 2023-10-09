@@ -43,7 +43,7 @@ class Mongodb(Subscriber):
         if section in self.settings.get("section"):
             oldvalue = self.settings.get(option)
             self.settings[option] = value
-            self.logger.debug(f"{section} > {option} updated from {oldvalue} to {self.settings.get(option)}")
+            self.logger.debug(f"{section}: {oldvalue} > {self.settings.get(option)}")
 
     async def pingServer(self):
         try:
