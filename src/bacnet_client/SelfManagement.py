@@ -1,5 +1,6 @@
 
 import asyncio
+import datetime
 import subprocess
 import logging
 import argparse
@@ -9,7 +10,8 @@ from abc import ABC, abstractmethod
 
 class LocalManager(object):
     """
-    Manage bacnet device settings from cloud based UI.
+    Manage bacnet device configuration change-of-state events and notify all bacnet services
+    of changes during runtime without incurring any application downtime.
     """
 
     __instance = None
@@ -168,6 +170,90 @@ class LocalManager(object):
             else:
                 self.last_event = current_event
             await asyncio.sleep(60)
+
+
+class ServiceScheduler(object):
+    """
+    This service manages service execution timing. It keeps track of tickets each service opens
+    when they run a task in the application loop, based on each service's own specific execution
+    interval configuration setting, the ticket will mark when the task execution begun, and will
+    keep checking for when it should end (time.now + relative_time.interval).
+
+    The scheduler's run method will run as a looped task in app.main and will maintain track of
+    all open tickets and their status (active/expired).
+
+    The scheduler maintains a list of expired ticket indexes, and traverses the list on every scan
+    removing expired tickets from the ticket list, then it tries to rebuild itself by traversing the
+    ticket list looking for new expired tickets.
+
+    Services create a new ticket with this object from their run methods and subsequently check that
+    their ticket exists and is active to continue bypassing their runtime logic until the ticket has
+    expired or has been removed by this object (Service Scheduler). Once the ticket is no longer in
+    the list or it has a status of expired, the service creates a new ticket with new start and end
+    timestamps and set the status to active, it then executes its logic once until the next ticket
+    expiration event happens.
+
+    The Ticket tuple will have for fields as shown below:
+    ( <[section]:"Section">,<[created_time]: time.time> <[elapsed_time]: time.time + interval_in_seconds>, <[status]: "active" | "expired"> )
+
+    Tips:
+    dt.timetuple()
+    time.struct_time(tm_year=2023, tm_mon=10, tm_mday=7, tm_hour=20, tm_min=11, tm_sec=15, tm_wday=5, tm_yday=280, tm_isdst=-1)
+    """
+
+    __ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
+    __instance = None
+
+    def __init__(self) -> None:
+        self.tickets = {}
+        self.expired_tickets = []
+        self.logger = logging.getLogger('ClientLog')
+
+    def __new__(cls):
+        if ServiceScheduler.__instance is None:
+            ServiceScheduler.__instance = object.__new__(cls)
+        return ServiceScheduler.__instance
+
+    def create_ticket(self, section: str, interval: int):  # interval is in seconds
+        now = datetime.datetime.now()
+        elapsed = datetime.datetime.fromtimestamp(float(now.timestamp() + interval))
+        ticket = [now.timestamp(), elapsed.timestamp(), "active"]
+        self.logger.debug(f"ticket created: {ticket}")
+        self.logger.info(f"next {section} cycle on \
+                         {elapsed.strftime(ServiceScheduler.__ISO8601)}")
+        self.tickets[section] = ticket
+
+    def check_ticket(self, section, interval=None):
+        now = datetime.datetime.now().timestamp()
+        ticket = self.tickets.get(section)
+        valid = False
+
+        if ticket is None and interval is not None:
+            self.create_ticket(section, interval)
+        else:
+            if ticket[1] <= now:
+                ticket[2] = "expired"
+                self.expired_tickets.append(section)
+                valid = True
+        return valid
+
+    def update_tickets(self):
+        for section in self.tickets.keys():
+            self.check_ticket(section)
+
+    def remove_expired(self):
+        for section in self.expired_tickets:
+            if self.tickets.get(section) is not None:
+                self.tickets.pop(section)
+                self.expired_tickets.pop(
+                    self.expired_tickets.index(section)
+                )
+
+    async def run(self):
+        while True:
+            self.update_tickets()
+            self.remove_expired()
+            await asyncio.sleep(10)
 
 
 class Subscriber(ABC):

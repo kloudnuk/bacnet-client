@@ -14,7 +14,8 @@ from .MongoClient import Mongodb
 import bacnet_client.DeviceManagement as dm
 import bacnet_client.PointManagement as pm
 import bacnet_client.PointPolling as pp
-from .SelfManagement import LocalManager
+from .SelfManagement import (LocalManager,
+                             ServiceScheduler)
 
 
 class Bacapp():
@@ -116,14 +117,19 @@ async def main():
 
         bacapp = Bacapp()
         bacapp.loop = loop
+
+        scheduler = ServiceScheduler()
+
         await asyncio.gather(
             log(logQ, bacapp.clients.get("mongodb")),
             bacapp.localMgr.proces_io_deltas(),
-            bacapp.run()
+            bacapp.run(),
+            scheduler.run()
         )
 
     finally:
         print(f"{__file__} {__name__} finally statement reached...")
+        do_log_exit(bacapp)
 
 if __name__ == "__main__":
     asyncio.run(main())

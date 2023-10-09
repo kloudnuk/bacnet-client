@@ -4,7 +4,8 @@ import pickle
 from .Device import LocalBacnetDevice
 from .Point import BacnetPoint
 from .SelfManagement import (LocalManager,
-                             Subscriber)
+                             Subscriber,
+                             ServiceScheduler)
 from bacpypes3.ipv4.app import NormalApplication
 from collections import OrderedDict
 
@@ -19,6 +20,7 @@ class PollService(Subscriber):
 
     def __init__(self) -> None:
         self.localMgr: LocalManager = LocalManager()
+        self.scheduler: ServiceScheduler = ServiceScheduler()
         self.app: NormalApplication = None
         self.mongo = None
         self.localDevice = LocalBacnetDevice()
@@ -60,7 +62,9 @@ class PollService(Subscriber):
                                                                  "enable")
             self.settings['interval'] = self.localMgr.read_setting(self.settings.get("section"),
                                                                    "interval")
-            await self.poll()
+            if self.scheduler.check_ticket(self.settings.get("section"),
+                                           interval=self.settings.get("interval")):
+                await self.poll()
 
     async def poll(self):
         """

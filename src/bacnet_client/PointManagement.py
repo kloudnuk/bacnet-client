@@ -4,7 +4,8 @@ import logging
 from collections import OrderedDict
 from .Device import LocalBacnetDevice
 from .SelfManagement import (LocalManager,
-                             Subscriber)
+                             Subscriber,
+                             ServiceScheduler)
 import bacnet_client.Point as pt
 import bacnet_client.PointPolling as pp
 from bacpypes3.ipv4.app import NormalApplication
@@ -24,6 +25,7 @@ class PointManager(Subscriber):
         self.localMgr: LocalManager = None
         self.og_fp = None
         self.mongo = None
+        self.scheduler: ServiceScheduler = ServiceScheduler()
         self.deviceSpecs = []
         self.object_graph = {}
         self.localDevice = LocalBacnetDevice()
@@ -32,7 +34,7 @@ class PointManager(Subscriber):
         self.settings: dict = {
             "section": "point-discovery",
             "enable": None,
-            "interval": None  # minutes
+            "interval": None
         }
         self.subscribed = False
         self.logger = logging.getLogger('ClientLog')
@@ -67,8 +69,11 @@ class PointManager(Subscriber):
                                                                  "enable")
             self.settings['interval'] = self.localMgr.read_setting(self.settings.get("section"),
                                                                    "interval")
-            await self.discover()
-            await self.commit()
+
+            if self.scheduler.check_ticket(self.settings.get("section"),
+                                           interval=self.settings.get("interval")):
+                await self.discover()
+                await self.commit()
 
     async def discover(self):
         """

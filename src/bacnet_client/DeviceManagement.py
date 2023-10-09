@@ -6,7 +6,8 @@ from bacpypes3.pdu import Address
 from bacpypes3.primitivedata import ObjectIdentifier
 from bacpypes3.apdu import AbortPDU, AbortReason
 from .SelfManagement import (LocalManager,
-                             Subscriber)
+                             Subscriber,
+                             ServiceScheduler)
 
 
 class DeviceManager(Subscriber):
@@ -26,14 +27,15 @@ class DeviceManager(Subscriber):
         self.app = None
         self.mongo = None
         self.localMgr: LocalManager = None
+        self.scheduler: ServiceScheduler = ServiceScheduler()
         self.lowLimit = 0
         self.highLimit = 4194303
         self.address = Address("*")
         self.settings = {
             "section": "device-discovery",
             "enable": None,
-            "interval": None,  # minutes
-            "timeout": None    # seconds
+            "interval": None,
+            "timeout": None
         }
         self.subscribed = False
         self.logger = logging.getLogger('ClientLog')
@@ -70,8 +72,10 @@ class DeviceManager(Subscriber):
             self.settings['timeout'] = \
                 self.localMgr.read_setting(self.settings.get("section"), "timeout")
 
-            await self.discover()
-            await self.commit()
+            if self.scheduler.check_ticket(self.settings.get("section"),
+                                           interval=self.settings.get("interval")):
+                await self.discover()
+                await self.commit()
 
     async def discover(self):
         """ Sends a who-is broadcast to the subnet and stores a list of responses. It parses
