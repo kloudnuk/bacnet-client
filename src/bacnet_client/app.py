@@ -11,6 +11,7 @@ from .Device import LocalBacnetDevice
 from .MongoClient import Mongodb
 
 # import services
+import bacnet_client.RemoteManagement as rm
 import bacnet_client.DeviceManagement as dm
 import bacnet_client.PointManagement as pm
 import bacnet_client.PointPolling as pp
@@ -38,6 +39,7 @@ class Bacapp():
             "mongodb": Mongodb()
         }
         self.services = {
+            "remoteMgr": rm.ScheduledUpdateManager(),
             "deviceMgr": dm.DeviceManager(),
             "pointMgr": pm.PointManager(),
             "pollSrv": pp.PollService()
