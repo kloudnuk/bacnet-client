@@ -5,11 +5,10 @@ from collections import OrderedDict
 from .MongoClient import Mongodb
 from abc import ABC, abstractmethod
 from .SelfManagement import (LocalManager,
-                             Subscriber,
                              ServiceScheduler)
 
 
-class ScheduledUpdateManager(Subscriber):
+class ScheduledUpdateManager():
     """
     TODO - This service has an initialization sequence that only runs during application bootup.
     During bootup it checks that there is a document with its nuk_id
@@ -17,7 +16,6 @@ class ScheduledUpdateManager(Subscriber):
 
     __ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
     __instance = None
-    __ini_section = "device"
 
     def __init__(self) -> None:
         self.app = None
@@ -25,25 +23,12 @@ class ScheduledUpdateManager(Subscriber):
         self.mongo: Mongodb = None
         self.configuration = None
         self.scheduler: ServiceScheduler = ServiceScheduler()
-        self.settings = {
-            "section": ScheduledUpdateManager.__ini_section,
-            "enable": None,
-            "interval": None
-        }
-        self.subscribed = False
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
         if ScheduledUpdateManager.__instance is None:
             ScheduledUpdateManager.__instance = object.__new__(cls)
         return ScheduledUpdateManager.__instance
-
-    def update(self, section, option, value):
-        if section in self.settings.get("section"):
-            oldvalue = self.settings.get(option)
-            self.settings[option] = value
-            self.logger.debug(f"{section} > {option} updated from \
-                              {oldvalue} to {self.settings.get(option)}")
 
     async def run(self, bacapp):
         if self.app is None:
@@ -54,28 +39,23 @@ class ScheduledUpdateManager(Subscriber):
         if bacapp.localMgr.initialized is True:
             if self.localMgr is None:
                 self.localMgr = bacapp.localMgr
-            if self.subscribed is False:
-                bacapp.localMgr.subscribe(self.__instance)
-                self.subscribed = True
 
-        self.settings['enable'] = self.localMgr.read_setting(self.settings.get("section"),
-                                                             "enable")
-        self.settings['interval'] = self.localMgr.read_setting(self.settings.get("section"),
-                                                               "interval")
+                self.configuration = Configuration(self.localMgr)
+                localConfig = self.configuration.update().get()
+                nukid = localConfig['device']['nukid']
+                self.logger.debug(f"nukid: {nukid}")
 
-        if self.scheduler.check_ticket(self.settings.get("section"),
-                                       interval=self.settings.get("interval")):
-            print("Remote Manager RUNNING...")
-            await self.find_updates()
-            await self.sync_updates()
-
-    async def find_updates(self):
-        self.configuration = Configuration(self.localMgr)
-        self.logger.info("Remote Update Manager looking for updates")
-        self.logger.debug(self.configuration.update())
-
-    async def sync_updates(self):
-        pass
+                remoteConfig = await self.mongo.findDocument(self.mongo.getDb(),
+                                                             "Configuration",
+                                                             {"nukid": nukid})
+                if remoteConfig is None:
+                    await self.mongo.writeDocument(localConfig,
+                                                   self.mongo.getDb(),
+                                                   "Configuration")
+                    # self.mongo.watch_collection("TODO")
+                else:
+                    # self.mongo.watch_collection("TODO")
+                    pass
 
 
 class Composite(ABC):
