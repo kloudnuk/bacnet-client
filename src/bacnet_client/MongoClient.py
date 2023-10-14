@@ -1,6 +1,7 @@
 
 import sys
 import logging
+import pymongo
 from pymongo.server_api import ServerApi
 from motor.motor_asyncio import AsyncIOMotorClient
 from .SelfManagement import (LocalManager,
@@ -98,28 +99,27 @@ class Mongodb(Subscriber):
     async def updateFields(self, db, collectionName: str, query=None, update=None):
         return await db[collectionName].update_one(query, {'$set': update})
 
-    async def watch_collection(pipeline):
-        pass
-        # resume_token = None
-        # pipeline = [{'$match': {'operationType': 'insert'}}]
-        # try:
-        #     async with db.collection.watch(pipeline) as stream:
-        #         async for insert_change in stream:
-        #             print(insert_change)
-        #             resume_token = stream.resume_token
-        # except pymongo.errors.PyMongoError:
-        #     # The ChangeStream encountered an unrecoverable error or the
-        #     # resume attempt failed to recreate the cursor.
-        #     if resume_token is None:
-        #         # There is no usable resume token because there was a
-        #         # failure during ChangeStream initialization.
-        #         logging.error('...')
-        #     else:
-        #         # Use the interrupted ChangeStream's resume token to
-        #         # create a new ChangeStream. The new stream will
-        #         # continue from the last seen insert change without
-        #         # missing any events.
-        #         async with db.collection.watch(
-        #                 pipeline, resume_after=resume_token) as stream:
-        #             async for insert_change in stream:
-        #                 print(insert_change)
+    async def watch_collection(self, db, collectionName, pipeline, target):
+        resume_token = None
+        try:
+            async with db[collectionName].watch(pipeline) as stream:
+                async for change_event in stream:
+                    self.logger.debug(f"config-event: {change_event}")
+                    target.ingest(change_event)
+                    resume_token = stream.resume_token
+        except pymongo.errors.PyMongoError:
+            # The ChangeStream encountered an unrecoverable error or the
+            # resume attempt failed to recreate the cursor.
+            if resume_token is None:
+                self.logger.error("There is no usable resume token because there was a"
+                                  " failure during ChangeStream initialization.")
+            else:
+                # Use the interrupted ChangeStream's resume token to
+                # create a new ChangeStream. The new stream will
+                # continue from the last seen insert change without
+                # missing any events.
+                async with db[collectionName].watch(
+                        pipeline, resume_after=resume_token) as stream:
+                    async for change_event in stream:
+                        self.logger.debug(f"config-event: {change_event}")
+                        target.ingest(change_event)

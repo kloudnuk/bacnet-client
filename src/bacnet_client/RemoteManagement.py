@@ -1,11 +1,38 @@
 
 import logging
 import json
-from collections import OrderedDict
+from collections import (OrderedDict, deque)
 from .MongoClient import Mongodb
 from abc import ABC, abstractmethod
 from .SelfManagement import (LocalManager,
                              ServiceScheduler)
+
+
+class EventManager():
+    """"
+    """
+    __instance = None
+
+    def __init__(self) -> None:
+        self.store = deque()
+        self.logger = logging.getLogger("ClientLog")
+
+    def __new__(cls):
+        if EventManager.__instance is None:
+            EventManager.__instance = object.__new__(cls)
+        return EventManager.__instance
+
+    def ingest(self, event):
+        try:
+            self.store.append(event)
+        except Exception as e:
+            self.logger.error(f"error {e} trying to record a \
+                              remote configuration change event {event}")
+        return self
+
+    def process(self):
+        pass
+        return self
 
 
 class ScheduledUpdateManager():
@@ -23,6 +50,7 @@ class ScheduledUpdateManager():
         self.mongo: Mongodb = None
         self.configuration = None
         self.scheduler: ServiceScheduler = ServiceScheduler()
+        self.eventMgr = EventManager()
         self.logger = logging.getLogger('ClientLog')
 
     def __new__(cls):
@@ -43,19 +71,26 @@ class ScheduledUpdateManager():
                 self.configuration = Configuration(self.localMgr)
                 localConfig = self.configuration.update().get()
                 nukid = localConfig['device']['nukid']
-                self.logger.debug(f"nukid: {nukid}")
+                pipeline = [{'$match': {'operationType': 'update'}}]
 
                 remoteConfig = await self.mongo.findDocument(self.mongo.getDb(),
                                                              "Configuration",
-                                                             {"nukid": nukid})
+                                                             {"device.nukid": nukid})
+                self.logger.debug(f"remote configuration: {remoteConfig}")
+
                 if remoteConfig is None:
                     await self.mongo.writeDocument(localConfig,
                                                    self.mongo.getDb(),
                                                    "Configuration")
-                    # self.mongo.watch_collection("TODO")
+                    await self.mongo.watch_collection(self.mongo.getDb(),
+                                                      "Configuration",
+                                                      pipeline,
+                                                      self.eventMgr)
                 else:
-                    # self.mongo.watch_collection("TODO")
-                    pass
+                    await self.mongo.watch_collection(self.mongo.getDb(),
+                                                      "Configuration",
+                                                      pipeline,
+                                                      self.eventMgr)
 
 
 class Composite(ABC):
