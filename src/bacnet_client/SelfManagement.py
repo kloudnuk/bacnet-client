@@ -7,6 +7,16 @@ import logging
 import argparse
 import configparser
 from abc import ABC, abstractmethod
+from enum import Enum
+
+
+class LogLevel(Enum):
+    CRITICAL = 50
+    ERROR = 40
+    WARNING = 30
+    INFO = 20
+    DEBUG = 10
+    NOTSET = 0
 
 
 class LocalManager(object):
@@ -170,6 +180,13 @@ class LocalManager(object):
                 self.last_event = 0
             else:
                 self.last_event = current_event
+
+            # Execute log level check every application cycle and adjust accordingly.
+            loglevel = self.read_setting("device", "loglevel").upper()
+            for level in LogLevel:
+                if level.name == loglevel:
+                    self.logger.setLevel(level.value)
+
             await asyncio.sleep(60)
 
 
