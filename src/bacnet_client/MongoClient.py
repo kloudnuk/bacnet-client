@@ -105,7 +105,7 @@ class Mongodb(Subscriber):
             async with db[collectionName].watch(pipeline) as stream:
                 async for change_event in stream:
                     self.logger.debug(f"config-event: {change_event}")
-                    target.ingest(change_event)
+                    await target.ingest(change_event)
                     resume_token = stream.resume_token
         except pymongo.errors.PyMongoError:
             # The ChangeStream encountered an unrecoverable error or the
@@ -122,4 +122,4 @@ class Mongodb(Subscriber):
                         pipeline, resume_after=resume_token) as stream:
                     async for change_event in stream:
                         self.logger.debug(f"config-event: {change_event}")
-                        target.ingest(change_event)
+                        await target.ingest(change_event)
