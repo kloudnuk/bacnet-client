@@ -4,7 +4,7 @@
 # https://aka.ms/yaml
 
 trigger:
-- 19-build-self-management-service
+- main
 
 pool: Default
 
@@ -57,11 +57,11 @@ steps:
       
       az artifacts universal publish \
           --organization https://dev.azure.com/vtsmolinski/ \
-          --project="DataBot" \
+          --project="kloudnuk" \
           --scope project \
           --feed databot \
           --name bacnet-client \
-          --version 0.0.8 \
+          --version 0.0.1 \
           --description "a bacnet-ip client to discover devices and their data to sample in real-time and collect time series on a cloud service." \
           --path dist
       
