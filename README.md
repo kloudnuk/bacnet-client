@@ -1,5 +1,7 @@
 # BACnet Client
-The BACnet Client module uses Joel Bender's Bacpypes3 python package as its BACnet stack in order to implement a service layer with the following interfaces:<br>
+
+The BACnet Client module uses Joel Bender's Bacpypes3 python package as its BACnet stack in order to implement a service layer with the following interfaces:
+
 - Device discovery
 - Point discovery
 - Trend collection
@@ -13,9 +15,12 @@ Each service interface will support the *initialize* and *run* methods through i
 ![bacnet-client](docs/res/BACnetClient.png)
 
 ## Device Discovery
+
 - Uses the bacpypes3 who-is native service interface to discover bacnet devices in a series of Async tasks that run on a loop.
-> Will need manage the environment's firewall in order to fully control bacnet ip port management from the application side. (for example on Ubuntu 22.04)<br>
+
+> Will need manage the environment's firewall in order to fully control bacnet ip port management from the application side. (for example on Ubuntu 22.04)
 `sudo ufw allow from any to any port 47808 proto udp`
+
 - Initializes the database with device data, creates a list of devices objects to track their state
 - The device objects implement an Obvservable interface to update a document's field(s) if it chagned.
 - The device list object also implements the Observable interface and either inserts or delete devices.

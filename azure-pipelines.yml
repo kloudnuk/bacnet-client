@@ -59,10 +59,10 @@ steps:
           --organization https://dev.azure.com/vtsmolinski/ \
           --project="kloudnuk" \
           --scope project \
-          --feed databot \
+          --feed kloudnuk \
           --name bacnet-client \
           --version 0.0.1 \
-          --description "a bacnet-ip client to discover devices and their data to sample in real-time and collect time series on a cloud service." \
+          --description "a bacnet-ip client to discover devices, and create real-time bi-directional pipelines." \
           --path dist
       
       az devops logout --organization https://dev.azure.com/vtsmolinski/
