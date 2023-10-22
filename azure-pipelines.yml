@@ -45,6 +45,7 @@ steps:
           pipx install poetry==1.4.2
       fi
       
+      poetry shell
       unlock_keyring
       rm -r dist/*
       poetry install --sync
