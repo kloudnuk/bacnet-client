@@ -79,10 +79,13 @@ class PollService(Subscriber):
 
         for k, v in self.object_graph.items():
             self.logger.debug(f"committing poll to db {k}")
-            await self.mongo \
-                .updateFields(self.mongo.getDb(), "Points",
-                              {"id": k},
-                              {"points": self.points_specs[k]})
+            try:
+                await self.mongo \
+                    .updateFields(self.mongo.getDb(), "Points",
+                                  {"id": k},
+                                  {"points": self.points_specs[k]})
+            except Exception as e:
+                self.logger.error(f"error {e}: {k} not found in {self.points_specs}")
         self.logger.info("point polling completed...")
 
     async def load_pointLists(self):
@@ -95,15 +98,17 @@ class PollService(Subscriber):
                 self.points_specs[k] = OrderedDict()
 
                 for key, value in self.object_graph[k].items():
-                    # self.logger.debug(key)
-                    point: BacnetPoint = BacnetPoint(self.app,
-                                                     self.localDevice,
-                                                     value,
-                                                     value["point"])
-                    await point.update()
+                    try:
+                        point: BacnetPoint = BacnetPoint(self.app,
+                                                         self.localDevice,
+                                                         value,
+                                                         value["point"])
+                        await point.update()
 
-                    self.poll_lists[k].append(point)
-                    self.points_specs[k][point.obj] = point.spec
+                        self.poll_lists[k].append(point)
+                        self.points_specs[k][point.obj] = point.spec
+                    except Exception as e:
+                        self.logger.error(f"{e} error: {k}")
 
         except:  # noqa: E722
             self.logger.critical("ERROR Unable to retrieve object graph from file OR poll or commit poll...!")
