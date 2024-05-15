@@ -36,6 +36,8 @@ function build_dist {
     cp -r src/res/ dist/
 }
 
-build_dist "$1"
+if [ build_dist "$1" ]; then
+    echo Bacnet Client build version "$1" complete with no errors.
+fi
 
 # Code sign the wheel
