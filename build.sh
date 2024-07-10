@@ -31,8 +31,8 @@ function build_dist {
     poetry shell
 
     # TODO - provide test coverage before version update and build.
-    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    package="bacnet-client-$1-$now.zip"
+    # now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    package="bacnet-client_$1.zip"
 
     update_version "$1"
 
