@@ -1,4 +1,3 @@
-
 import asyncio
 import datetime
 import pytz
@@ -41,11 +40,18 @@ class LocalManager(object):
         self.options = []
         self.subscribers = []
         self.last_event = 0
-        self.logger = logging.getLogger('ClientLog')
+        self.logger = logging.getLogger("ClientLog")
         self.build_options()
-        subprocess.run([f"{self.respath}ini_eventmgr.sh",
-                        f"{self.respath}local-device.ini",
-                        f"{self.respath}ini.events"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            [
+                f"{self.respath}ini_eventmgr.sh",
+                f"{self.respath}local-device.ini",
+                f"{self.respath}ini.events",
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     def __new__(cls):
         if LocalManager.__instance is None:
@@ -131,7 +137,7 @@ class LocalManager(object):
         return line_count
 
     def clear_events(self, file_path):
-        """"
+        """ "
         Reset the event count to zero at a certain point not to overflow its max size.
         """
         try:
@@ -168,14 +174,20 @@ class LocalManager(object):
             current_event = self.get_event_count(f"{self.respath}ini.events")
 
             if current_event > self.last_event:
-                self.logger.debug(f"Delta sink initiated - current: {current_event} - last: {self.last_event}")
+                self.logger.debug(
+                    f"Delta sink initiated - current: {current_event} - last: {self.last_event}"
+                )
                 self.sync()
             elif current_event < self.last_event:
-                self.logger.debug(f"File lines and tally are out-of-sync - current: {current_event} - last: {self.last_event}")
+                self.logger.debug(
+                    f"File lines and tally are out-of-sync - current: {current_event} - last: {self.last_event}"
+                )
                 self.last_event = current_event
 
             if current_event > 5000:
-                self.logger.debug(f"Max number of events reached, resetting: {current_event}")
+                self.logger.debug(
+                    f"Max number of events reached, resetting: {current_event}"
+                )
                 self.clear_events(f"{self.respath}ini.events")
                 self.last_event = 0
             else:
@@ -197,6 +209,7 @@ class Subscriber(ABC):
     call it for each of its subscribers. So any subscriber should extend
     the interface by implementing the method signature.
     """
+
     @abstractmethod
     def update(self, subscription):
         pass
@@ -239,12 +252,13 @@ class ServiceScheduler(Subscriber):
         self.localMgr: LocalManager = LocalManager()
         self.settings = {
             "section": ServiceScheduler.__ini_section,
-            "tz": pytz.timezone(self.localMgr.read_setting(ServiceScheduler.__ini_section,
-                                                           "tz")),
+            "tz": pytz.timezone(
+                self.localMgr.read_setting(ServiceScheduler.__ini_section, "tz")
+            ),
         }
         self.tickets = {}
         self.expired_tickets = []
-        self.logger = logging.getLogger('ClientLog')
+        self.logger = logging.getLogger("ClientLog")
 
     def __new__(cls):
         if ServiceScheduler.__instance is None:
@@ -259,12 +273,15 @@ class ServiceScheduler(Subscriber):
 
     def create_ticket(self, section: str, interval: int):  # interval is in seconds
         now = datetime.datetime.now(tz=self.settings.get("tz"))
-        elapsed = datetime.datetime.fromtimestamp(float(now.timestamp() + interval),
-                                                  tz=self.settings.get("tz"))
+        elapsed = datetime.datetime.fromtimestamp(
+            float(now.timestamp() + interval), tz=self.settings.get("tz")
+        )
         ticket = [now.timestamp(), elapsed.timestamp(), "active"]
         self.logger.debug(f"ticket created: {ticket}")
-        self.logger.info(f"next {section} cycle on \
-                         {elapsed.strftime(ServiceScheduler.__ISO8601)}")
+        self.logger.info(
+            f"next {section} cycle on \
+                         {elapsed.strftime(ServiceScheduler.__ISO8601)}"
+        )
         self.tickets[section] = ticket
 
     def check_ticket(self, section, interval=None):
@@ -289,9 +306,7 @@ class ServiceScheduler(Subscriber):
         for section in self.expired_tickets:
             if self.tickets.get(section) is not None:
                 self.tickets.pop(section)
-                self.expired_tickets.pop(
-                    self.expired_tickets.index(section)
-                )
+                self.expired_tickets.pop(self.expired_tickets.index(section))
 
     async def run(self):
         while True:
@@ -305,6 +320,7 @@ class Option(object):
     The Option object is responsible for keeping track of state
     for its parent section and its option value.
     """
+
     def __init__(self, section: str, option: str, value):
         self.section = section
         self.option = option

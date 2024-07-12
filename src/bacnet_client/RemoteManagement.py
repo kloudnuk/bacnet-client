@@ -1,13 +1,11 @@
-
 import logging
 import json
 import traceback
 import asyncio
-from collections import (OrderedDict, deque)
+from collections import OrderedDict, deque
 from .MongoClient import Mongodb
 from abc import ABC, abstractmethod
-from .SelfManagement import (LocalManager,
-                             ServiceScheduler)
+from .SelfManagement import LocalManager, ServiceScheduler
 
 
 class Composite(ABC):
@@ -17,8 +15,7 @@ class Composite(ABC):
 
 
 class Section(Composite):
-    """
-    """
+    """ """
 
     def __init__(self, name, localMgr) -> None:
         self.name = name
@@ -35,8 +32,7 @@ class Section(Composite):
 
 
 class Configuration(Composite):
-    """
-    """
+    """ """
 
     def __init__(self, localMgr) -> None:
         self.name = "local-device.ini"
@@ -63,9 +59,9 @@ class Configuration(Composite):
         return self
 
 
-class EventManager():
-    """"
-    """
+class EventManager:
+    """ " """
+
     __instance = None
 
     def __init__(self) -> None:
@@ -83,29 +79,33 @@ class EventManager():
         try:
             self.store.append(event)
         except Exception as e:
-            self.logger.error(f"error {e} trying to record a \
-                              remote configuration change event {event}")
+            self.logger.error(
+                f"error {e} trying to record a \
+                              remote configuration change event {event}"
+            )
         asyncio.get_running_loop().call_soon(self.process)
 
     def process(self):
         while len(self.store) > 0:
             try:
                 event = self.store.pop()
-                update: dict = event['updateDescription']['updatedFields']
+                update: dict = event["updateDescription"]["updatedFields"]
                 self.logger.debug(f"update-fields: {update}")
                 for k, v in update.items():
                     section = k.split(".")[0]
                     option = k.split(".")[1]
                     self.localConfig[section][option] = v
                     self.localMgr.config.set(section, option, v)
-                with open(f"{self.localMgr.respath}local-device.ini", 'w') as configFile:
+                with open(
+                    f"{self.localMgr.respath}local-device.ini", "w"
+                ) as configFile:
                     self.localMgr.config.write(configFile)
             except Exception as e:
                 self.logger.error({e})
                 traceback.print_exc()
 
 
-class ScheduledUpdateManager():
+class ScheduledUpdateManager:
     """
     This service has an initialization sequence that only runs during application bootup.
     During bootup it checks that there is a document with its nuk_id
@@ -121,7 +121,7 @@ class ScheduledUpdateManager():
         self.configuration = None
         self.eventMgr = None
         self.scheduler: ServiceScheduler = ServiceScheduler()
-        self.logger = logging.getLogger('ClientLog')
+        self.logger = logging.getLogger("ClientLog")
 
     def __new__(cls):
         if ScheduledUpdateManager.__instance is None:
@@ -143,24 +143,22 @@ class ScheduledUpdateManager():
                 self.eventMgr = EventManager()
                 self.eventMgr.localMgr = self.localMgr
                 self.eventMgr.localConfig = localConfig
-                nukid = localConfig['device']['nukid']
-                pipeline = [{'$match': {'operationType': 'update'}}]
+                nukid = localConfig["device"]["nukid"]
+                pipeline = [{"$match": {"operationType": "update"}}]
 
-                remoteConfig = await self.mongo.findDocument(self.mongo.getDb(),
-                                                             "Configuration",
-                                                             {"device.nukid": nukid})
+                remoteConfig = await self.mongo.findDocument(
+                    self.mongo.getDb(), "Configuration", {"device.nukid": nukid}
+                )
                 self.logger.debug(f"remote configuration: {remoteConfig}")
 
                 if remoteConfig is None:
-                    await self.mongo.writeDocument(localConfig,
-                                                   self.mongo.getDb(),
-                                                   "Configuration")
-                    await self.mongo.watch_collection(self.mongo.getDb(),
-                                                      "Configuration",
-                                                      pipeline,
-                                                      self.eventMgr)
+                    await self.mongo.writeDocument(
+                        localConfig, self.mongo.getDb(), "Configuration"
+                    )
+                    await self.mongo.watch_collection(
+                        self.mongo.getDb(), "Configuration", pipeline, self.eventMgr
+                    )
                 else:
-                    await self.mongo.watch_collection(self.mongo.getDb(),
-                                                      "Configuration",
-                                                      pipeline,
-                                                      self.eventMgr)
+                    await self.mongo.watch_collection(
+                        self.mongo.getDb(), "Configuration", pipeline, self.eventMgr
+                    )

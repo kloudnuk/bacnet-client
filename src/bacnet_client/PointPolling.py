@@ -1,11 +1,8 @@
-
 import logging
 import pickle
 from .Device import LocalBacnetDevice
 from .Point import BacnetPoint
-from .SelfManagement import (LocalManager,
-                             Subscriber,
-                             ServiceScheduler)
+from .SelfManagement import LocalManager, Subscriber, ServiceScheduler
 from bacpypes3.ipv4.app import NormalApplication
 from collections import OrderedDict
 
@@ -27,12 +24,8 @@ class PollService(Subscriber):
         self.object_graph: dict = {}
         self.poll_lists = OrderedDict()
         self.points_specs = OrderedDict()
-        self.logger = logging.getLogger('ClientLog')
-        self.settings = {
-            "section": "point-polling",
-            "enable": None,
-            "interval": None
-        }
+        self.logger = logging.getLogger("ClientLog")
+        self.settings = {"section": "point-polling", "enable": None, "interval": None}
         self.subscribed = False
 
     def __new__(cls):
@@ -44,8 +37,10 @@ class PollService(Subscriber):
         if section in self.settings.get("section"):
             oldvalue = self.settings.get(option)
             self.settings[option] = value
-            self.logger.debug(f"{section} > {option} updated \
-                              from {oldvalue} to {self.settings.get(option)}")
+            self.logger.debug(
+                f"{section} > {option} updated \
+                              from {oldvalue} to {self.settings.get(option)}"
+            )
 
     async def run(self, bacapp):
         if self.app is None:
@@ -58,12 +53,15 @@ class PollService(Subscriber):
                 bacapp.localMgr.subscribe(self.__instance)
                 self.subscribed = True
 
-            self.settings['enable'] = self.localMgr.read_setting(self.settings.get("section"),
-                                                                 "enable")
-            self.settings['interval'] = self.localMgr.read_setting(self.settings.get("section"),
-                                                                   "interval")
-            if self.scheduler.check_ticket(self.settings.get("section"),
-                                           interval=self.settings.get("interval")):
+            self.settings["enable"] = self.localMgr.read_setting(
+                self.settings.get("section"), "enable"
+            )
+            self.settings["interval"] = self.localMgr.read_setting(
+                self.settings.get("section"), "interval"
+            )
+            if self.scheduler.check_ticket(
+                self.settings.get("section"), interval=self.settings.get("interval")
+            ):
                 await self.poll()
 
     async def poll(self):
@@ -80,17 +78,19 @@ class PollService(Subscriber):
         for k, v in self.object_graph.items():
             self.logger.debug(f"committing poll to db {k}")
             try:
-                await self.mongo \
-                    .updateFields(self.mongo.getDb(), "Points",
-                                  {"id": k},
-                                  {"points": self.points_specs[k]})
+                await self.mongo.updateFields(
+                    self.mongo.getDb(),
+                    "Points",
+                    {"id": k},
+                    {"points": self.points_specs[k]},
+                )
             except Exception as e:
                 self.logger.error(f"error {e}: {k} not found in {self.points_specs}")
         self.logger.info("point polling completed...")
 
     async def load_pointLists(self):
         try:
-            with open(f"{self.localMgr.respath}object-graph.pkl", 'rb') as object_graph:
+            with open(f"{self.localMgr.respath}object-graph.pkl", "rb") as object_graph:
                 self.object_graph: dict = pickle.load(object_graph)
             for k, v in self.object_graph.items():
                 self.logger.info(f"polling {k}")
@@ -99,10 +99,9 @@ class PollService(Subscriber):
 
                 for key, value in self.object_graph[k].items():
                     try:
-                        point: BacnetPoint = BacnetPoint(self.app,
-                                                         self.localDevice,
-                                                         value,
-                                                         value["point"])
+                        point: BacnetPoint = BacnetPoint(
+                            self.app, self.localDevice, value, value["point"]
+                        )
                         await point.update()
 
                         self.poll_lists[k].append(point)
@@ -111,4 +110,6 @@ class PollService(Subscriber):
                         self.logger.error(f"{e} error: {k}")
 
         except:  # noqa: E722
-            self.logger.critical("ERROR Unable to retrieve object graph from file OR poll or commit poll...!")
+            self.logger.critical(
+                "ERROR Unable to retrieve object graph from file OR poll or commit poll...!"
+            )

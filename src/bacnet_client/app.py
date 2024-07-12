@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import queue
@@ -15,11 +14,10 @@ from .RemoteManagement import ScheduledUpdateManager
 import bacnet_client.DeviceManagement as dm
 import bacnet_client.PointManagement as pm
 import bacnet_client.PointPolling as pp
-from .SelfManagement import (LocalManager,
-                             ServiceScheduler)
+from .SelfManagement import LocalManager, ServiceScheduler
 
 
-class Bacapp():
+class Bacapp:
 
     __instance = None
 
@@ -33,17 +31,16 @@ class Bacapp():
             time.sleep(1)
 
         self.localDevice = LocalBacnetDevice()
-        self.app = NormalApplication(self.localDevice.deviceObject,
-                                     self.localDevice.deviceAddress)
-        self.clients = {
-            "mongodb": Mongodb()
-        }
+        self.app = NormalApplication(
+            self.localDevice.deviceObject, self.localDevice.deviceAddress
+        )
+        self.clients = {"mongodb": Mongodb()}
         self.services = {
             "deviceMgr": dm.DeviceManager(),
             "pointMgr": pm.PointManager(),
-            "pollSrv": pp.PollService()
+            "pollSrv": pp.PollService(),
         }
-        self.logger = logging.getLogger('ClientLog')
+        self.logger = logging.getLogger("ClientLog")
 
     def __new__(cls):
         if Bacapp.__instance is None:
@@ -54,8 +51,9 @@ class Bacapp():
         while True:
             tasks = []
             for service, object in self.services.items():
-                enable = bool(self.localMgr.read_setting(
-                    object.settings.get("section"), "enable"))
+                enable = bool(
+                    self.localMgr.read_setting(object.settings.get("section"), "enable")
+                )
                 if enable is True:
                     tasks.append(self.loop.create_task(object.run(self), name=service))
             await asyncio.gather(*tasks)
@@ -64,12 +62,12 @@ class Bacapp():
 class JsonFormatter(logging.Formatter):
     def format(self, record):
         log_data = {
-            'log': record.name,
-            'timestamp': self.formatTime(record, self.datefmt),
-            'level': record.levelname,
-            'message': record.getMessage(),
-            'module': record.module,
-            'line': record.lineno
+            "log": record.name,
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "module": record.module,
+            "line": record.lineno,
         }
         return json.dumps(log_data, ensure_ascii=False)
 
@@ -91,9 +89,7 @@ async def log(q, mongo):
                     break
                 else:
                     print(m.group(0))
-                    await mongo.writeDocument(mongo_record,
-                                              mongo.getDb(),
-                                              "Logs")
+                    await mongo.writeDocument(mongo_record, mongo.getDb(), "Logs")
         except Exception as e:
             print(e)
         await asyncio.sleep(1)
@@ -112,7 +108,7 @@ async def main():
         logQ = queue.Queue()
         logProducer = QueueHandler(logQ)
         logProducer.setFormatter(JsonFormatter(datefmt=ISO8601))
-        logger = logging.getLogger('ClientLog')
+        logger = logging.getLogger("ClientLog")
         logger.addHandler(logProducer)
         logger.setLevel(logging.DEBUG)
 
@@ -127,12 +123,13 @@ async def main():
             bacapp.localMgr.proces_io_deltas(),
             bacapp.run(),
             remoteMgr.run(bacapp),
-            scheduler.run()
+            scheduler.run(),
         )
 
     finally:
         print(f"{__file__} {__name__} finally statement reached...")
         do_log_exit(bacapp)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
