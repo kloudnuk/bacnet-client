@@ -74,8 +74,8 @@ class BacnetPoint:
                     ).strftime(BacnetPoint.__ISO8601),
                 }
             )
-        except Exception:
-            self.logger.error(f"failed to build point object {self.obj}")
+        except Exception as e:
+            self.logger.error(f"failed to build point object {self.obj}\n\t{e}")
 
     async def update(self):
         try:

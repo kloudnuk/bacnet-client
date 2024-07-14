@@ -109,7 +109,7 @@ class PollService(Subscriber):
                     except Exception as e:
                         self.logger.error(f"{e} error: {k}")
 
-        except:  # noqa: E722
+        except Exception as e:  # noqa: E722
             self.logger.critical(
-                "ERROR Unable to retrieve object graph from file OR poll or commit poll...!"
+                f"ERROR Unable to retrieve object graph from file OR poll or commit poll...!\n\t{e}"
             )
