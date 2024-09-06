@@ -44,8 +44,8 @@ function build_dist {
     echo '' >'src/res/ini.events'
     echo '' >'src/res/object-graph.pkl'
     cp -r src/res/ dist/
-    zip -r "$package" dist/
 
+    zip -r "$package" dist/
     aws s3 cp "$package" s3://nuksoftware
 
     # shellcheck disable=SC2181
