@@ -84,8 +84,8 @@ class PollService(Subscriber):
                     {"id": k},
                     {"points": self.points_specs[k]},
                 )
-            except Exception as e:
-                self.logger.error(f"error {e}: {k} not found in {self.points_specs}")
+            except:
+                self.logger.error(f"error: {k} not found in {self.points_specs}")
         self.logger.info("point polling completed...")
 
     async def load_pointLists(self):
@@ -106,10 +106,10 @@ class PollService(Subscriber):
 
                         self.poll_lists[k].append(point)
                         self.points_specs[k][point.obj] = point.spec
-                    except Exception as e:
-                        self.logger.error(f"{e} error: {k}")
+                    except:
+                        self.logger.error(f"error: {k}")
 
-        except Exception as e:  # noqa: E722
+        except:  # noqa: E722
             self.logger.critical(
-                f"ERROR Unable to retrieve object graph from file OR poll or commit poll...!\n\t{e}"
+                f"ERROR Unable to retrieve object graph from file OR poll or commit poll...!"
             )

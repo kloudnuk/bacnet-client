@@ -184,15 +184,15 @@ class PointManager(Subscriber):
                     with open(self.og_fp, "wb") as object_graph:
                         try:
                             pickle.dump(self.object_graph, object_graph)
-                        except Exception as e:  # noqa: E722
+                        except:  # noqa: E722
                             self.logger.critical(
-                                f"ERROR Unable to append {deviceSpec['id']} object graph to file...!\n\t{e}"
+                                f"ERROR Unable to append {deviceSpec['id']} object graph to file...!"
                             )
 
-                except Exception as e:  # noqa: E722
+                except:  # noqa: E722
                     self.logger.critical(
                         f"ERROR object-list is not available in \
-                            {device['properties']['device-name']['value']}\n\t{e}"
+                            {device['properties']['device-name']['value']}"
                     )
 
                 self.deviceSpecs.append(deviceSpec)
@@ -290,7 +290,6 @@ class PointManager(Subscriber):
             self.logger.error(
                 "could not commit devices to the database...!", stack_info=True
             )
-            raise Exception("ERROR - could not commit devices to the database...!")
 
         self.deviceSpecs.clear()
         self.object_graph.clear()

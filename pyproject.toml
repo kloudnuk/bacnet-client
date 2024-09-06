@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bacnet-client"
-version = "0.0.9"
+version = "0.0.10"
 description = ""
 authors = ["viteski <vsmolinski@vitek.dev>"]
 readme = "README.md"

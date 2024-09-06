@@ -74,8 +74,9 @@ class BacnetPoint:
                     ).strftime(BacnetPoint.__ISO8601),
                 }
             )
-        except Exception as e:
-            self.logger.error(f"failed to build point object {self.obj}\n\t{e}")
+        except:
+            self.logger.error(f"failed to build point object {self.obj}")
+            raise;
 
     async def update(self):
         try:
@@ -102,7 +103,7 @@ class BacnetPoint:
             self.spec["last synced"] = dt.datetime.now(
                 tz=self.localDevice.settings.get("tz")
             ).strftime(BacnetPoint.__ISO8601)
-        except Exception:
+        except:
             self.logger.error(
                 f"{dt.datetime.now(tz=self.localDevice.settings.get('tz'))} - \
                   {self.obj}"
@@ -135,13 +136,13 @@ class AnalogPoint(BacnetPoint):
             self.spec["units"] = str(units)
             self.spec["maxVal"] = maxVal
             self.spec["minVal"] = minVal
-        except Exception as e:
+        except:
             errorTime = dt.datetime.now(
                 tz=self.localDevice.settings.get("tz")
             ).strftime(super().__ISO8601)
             self.logger.error(
                 f"ERROR - {errorTime} - \
-                    Could not read all data for analog point - {self.obj} -  {e}"
+                    Could not read all data for analog point - {self.obj}"
             )
 
 
@@ -172,13 +173,13 @@ class BinaryPoint(BacnetPoint):
             self.spec["inactive-text"] = inactive_text
             self.spec["elapsed-active-time"] = elapsed_active
 
-        except Exception as e:
+        except:
             errorTime = dt.datetime.now(
                 tz=self.localDevice.settings.get("tz")
             ).strftime(super().__ISO8601)
             self.logger.error(
                 f"{errorTime} - \
-                    Could not read all data for analog point - {self.obj} -  {e}"
+                    Could not read all data for analog point - {self.obj}"
             )
 
 
@@ -202,11 +203,11 @@ class MsvPoint(BacnetPoint):
             self.spec["state-count"] = state_count
             self.spec["state-labels"] = state_text
 
-        except Exception as e:
+        except:
             errorTime = dt.datetime.now(
                 tz=self.localDevice.settings.get("tz")
             ).strftime(super().__ISO8601)
             self.logger.error(
                 f"{errorTime} - \
-                    Could not read all data for analog point - {self.obj} -  {e}"
+                    Could not read all data for analog point - {self.obj}"
             )
