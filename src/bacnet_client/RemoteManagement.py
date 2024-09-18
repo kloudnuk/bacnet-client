@@ -83,6 +83,8 @@ class EventManager:
                 f"error {e} trying to record a \
                               remote configuration change event {event}"
             )
+        except:
+            self.logger.error("error...")
         asyncio.get_running_loop().call_soon(self.process)
 
     def process(self):
@@ -103,6 +105,8 @@ class EventManager:
             except Exception as e:
                 self.logger.error({e})
                 traceback.print_exc()
+            except:
+                self.logger.error("error...")
 
 
 class ScheduledUpdateManager:
@@ -146,10 +150,13 @@ class ScheduledUpdateManager:
                 nukid = localConfig["device"]["nukid"]
                 pipeline = [{"$match": {"operationType": "update"}}]
 
-                remoteConfig = await self.mongo.findDocument(
-                    self.mongo.getDb(), "Configuration", {"device.nukid": nukid}
-                )
-                self.logger.debug(f"remote configuration: {remoteConfig}")
+                try:
+                    remoteConfig = await self.mongo.findDocument(
+                        self.mongo.getDb(), "Configuration", {"device.nukid": nukid}
+                    )
+                except:
+                    remoteConfig = None
+                    self.logger.error(f"remote configuration not found: {remoteConfig}")
 
                 if remoteConfig is None:
                     await self.mongo.writeDocument(
@@ -162,3 +169,4 @@ class ScheduledUpdateManager:
                     await self.mongo.watch_collection(
                         self.mongo.getDb(), "Configuration", pipeline, self.eventMgr
                     )
+                self.logger.debug(f"remote configuration: {remoteConfig}")
