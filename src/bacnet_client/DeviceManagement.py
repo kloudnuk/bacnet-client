@@ -125,6 +125,8 @@ class DeviceManager(Subscriber):
                                 object_list.append(object_id)
 
                             propDict["object-list"] = object_list
+                except:
+                    self.logger.error("Device discovery error...!")
 
             device: BacnetDevice = BacnetDevice(id, str(iamDict[id]), propDict)
 
@@ -148,80 +150,86 @@ class DeviceManager(Subscriber):
         """
         self.logger.info("device commit to database has started...")
         devices = sorted(list(self.devices))
-        docCount = await self.mongo.getDocumentCount(self.mongo.getDb(), "Devices")
-        self.logger.debug(f"Doc Count: {docCount}")
-        self.logger.info(f"Device Count: {len(devices)}")
-        if docCount == 0:
+        try:
+            docCount = await self.mongo.getDocumentCount(self.mongo.getDb(), "Devices")
+        except:
             await self.mongo.writeDocuments(
                 [device.spec for device in devices], self.mongo.getDb(), "Devices"
             )
-        elif docCount == len(devices):
-            for device in devices:
-                await self.mongo.replaceDocument(
-                    device.spec, self.mongo.getDb(), "Devices"
+        else:           
+            self.logger.debug(f"Doc Count: {docCount}")
+            self.logger.info(f"Device Count: {len(devices)}")
+            if docCount == 0:
+                await self.mongo.writeDocuments(
+                    [device.spec for device in devices], self.mongo.getDb(), "Devices"
+                )
+            elif docCount == len(devices):
+                for device in devices:
+                    await self.mongo.replaceDocument(
+                        device.spec, self.mongo.getDb(), "Devices"
+                    )
+
+            elif docCount < len(devices):
+                dbPayload = await self.mongo.findDocuments(
+                    self.mongo.getDb(), "Devices", query={}, projection={"id": 1, "_id": 0}
                 )
 
-        elif docCount < len(devices):
-            dbPayload = await self.mongo.findDocuments(
-                self.mongo.getDb(), "Devices", query={}, projection={"id": 1, "_id": 0}
-            )
+                memDeviceIds = set([int(str(d.deviceId).split(",")[1]) for d in devices])
+                dbDeviceIds = set([int(str(d["id"]).split(",")[1]) for d in dbPayload])
 
-            memDeviceIds = set([int(str(d.deviceId).split(",")[1]) for d in devices])
-            dbDeviceIds = set([int(str(d["id"]).split(",")[1]) for d in dbPayload])
+                newDeviceIds = memDeviceIds - dbDeviceIds
+                foundDeviceIds = memDeviceIds & dbDeviceIds
 
-            newDeviceIds = memDeviceIds - dbDeviceIds
-            foundDeviceIds = memDeviceIds & dbDeviceIds
+                self.logger.info(f"devices discovered: {memDeviceIds}")
+                self.logger.info(f"devices pulled from db: {dbDeviceIds}")
+                self.logger.info(f"new devices to push to db: {newDeviceIds}")
+                self.logger.info(f"devices found to update on the db: {foundDeviceIds}")
 
-            self.logger.info(f"devices discovered: {memDeviceIds}")
-            self.logger.info(f"devices pulled from db: {dbDeviceIds}")
-            self.logger.info(f"new devices to push to db: {newDeviceIds}")
-            self.logger.info(f"devices found to update on the db: {foundDeviceIds}")
-
-            newDevices = list(
-                filter(
-                    lambda device: int(str(device.deviceId).split(",")[1])
-                    in list(newDeviceIds),
-                    sorted(list(self.devices)),
+                newDevices = list(
+                    filter(
+                        lambda device: int(str(device.deviceId).split(",")[1])
+                        in list(newDeviceIds),
+                        sorted(list(self.devices)),
+                    )
                 )
-            )
-            for nd in newDevices:
-                await self.mongo.writeDocument(nd.spec, self.mongo.getDb(), "Devices")
+                for nd in newDevices:
+                    await self.mongo.writeDocument(nd.spec, self.mongo.getDb(), "Devices")
 
-            foundDevices = list(
-                filter(
-                    lambda device: int(str(device.deviceId).split(",")[1])
-                    in list(foundDeviceIds),
-                    sorted(list(self.devices)),
+                foundDevices = list(
+                    filter(
+                        lambda device: int(str(device.deviceId).split(",")[1])
+                        in list(foundDeviceIds),
+                        sorted(list(self.devices)),
+                    )
                 )
-            )
-            for fd in foundDevices:
-                await self.mongo.replaceDocument(fd.spec, self.mongo.getDb(), "Devices")
+                for fd in foundDevices:
+                    await self.mongo.replaceDocument(fd.spec, self.mongo.getDb(), "Devices")
 
-        elif docCount > len(devices):
-            dbPayload = await self.mongo.findDocuments(
-                self.mongo.getDb(), "Devices", query={}, projection={"id": 1, "_id": 0}
-            )
-
-            memDeviceIds = set([int(str(d.deviceId).split(",")[1]) for d in devices])
-            dbDeviceIds = set([int(str(d["id"]).split(",")[1]) for d in dbPayload])
-            foundDeviceIds = memDeviceIds & dbDeviceIds
-            self.logger.info(f"devices discovered: {memDeviceIds}")
-            self.logger.info(f"devices pulled from db: {dbDeviceIds}")
-            self.logger.info(f"devices found to update on the db: {foundDeviceIds}")
-            foundDevices = list(
-                filter(
-                    lambda device: int(str(device.deviceId).split(",")[1])
-                    in list(foundDeviceIds),
-                    sorted(list(self.devices)),
+            elif docCount > len(devices):
+                dbPayload = await self.mongo.findDocuments(
+                    self.mongo.getDb(), "Devices", query={}, projection={"id": 1, "_id": 0}
                 )
-            )
-            for fd in foundDevices:
-                await self.mongo.replaceDocument(fd.spec, self.mongo.getDb(), "Devices")
-        else:
-            self.logger.error(
-                "could not commit devices to the database...!", stack_info=True
-            )
-            raise Exception("ERROR - could not commit devices to the database...!")
+
+                memDeviceIds = set([int(str(d.deviceId).split(",")[1]) for d in devices])
+                dbDeviceIds = set([int(str(d["id"]).split(",")[1]) for d in dbPayload])
+                foundDeviceIds = memDeviceIds & dbDeviceIds
+                self.logger.info(f"devices discovered: {memDeviceIds}")
+                self.logger.info(f"devices pulled from db: {dbDeviceIds}")
+                self.logger.info(f"devices found to update on the db: {foundDeviceIds}")
+                foundDevices = list(
+                    filter(
+                        lambda device: int(str(device.deviceId).split(",")[1])
+                        in list(foundDeviceIds),
+                        sorted(list(self.devices)),
+                    )
+                )
+                for fd in foundDevices:
+                    await self.mongo.replaceDocument(fd.spec, self.mongo.getDb(), "Devices")
+            else:
+                self.logger.error(
+                    "could not commit devices to the database...!", stack_info=True
+                )
+                raise Exception("ERROR - could not commit devices to the database...!")
 
         self.devices.clear()
 

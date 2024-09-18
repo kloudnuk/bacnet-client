@@ -54,6 +54,8 @@ class Mongodb(Subscriber):
         except Exception as e:
             sys.stderr.buffer.write(bytes(f"{e}\n", "utf-8"))
             return False
+        except:
+            self.logger.error("error...")
 
     def getDb(self):
         try:
@@ -61,6 +63,8 @@ class Mongodb(Subscriber):
         except Exception as e:
             self.logger.critical(f"{e}")
             return None
+        except:
+            self.logger.error("error...")
 
     def getCollection(self, colName: str):
         return self.client[colName]
@@ -74,6 +78,8 @@ class Mongodb(Subscriber):
             await db[collectionName].insert_one(document)
         except Exception as e:
             self.logger.error(f"{e}")
+        except:
+            self.logger.error("error...")
 
     async def writeDocuments(self, documents: list, db, collectionName: str):
         result_set = None
@@ -84,6 +90,8 @@ class Mongodb(Subscriber):
             )
         except Exception as e:
             self.logger.error(f"{e}")
+        except:
+            self.logger.error("error...")
 
     async def replaceDocument(self, document: dict, db, collectionName: str):
         await db[collectionName].find_one_and_replace({"id": document["id"]}, document)
@@ -127,3 +135,5 @@ class Mongodb(Subscriber):
                     async for change_event in stream:
                         self.logger.debug(f"config-event: {change_event}")
                         await target.ingest(change_event)
+        except:
+            self.logger.error("error...")

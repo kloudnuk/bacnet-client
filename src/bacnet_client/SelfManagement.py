@@ -148,6 +148,8 @@ class LocalManager(object):
             self.logger.error(f"The file '{file_path}' was not found.")
         except Exception as e:
             self.logger.error(f"An error occurred: {e}")
+        except:
+            self.logger.error("error...")
 
     def sync(self):
         """

@@ -89,113 +89,117 @@ class PointManager(Subscriber):
         """
 
         self.logger.info("point discovery started...")
-        docCount = await self.mongo.getDocumentCount(self.mongo.getDb(), "Devices")
-        if docCount > 0:
-            dbPayload = await self.mongo.findDocuments(
-                self.mongo.getDb(),
-                "Devices",
-                query={},
-                projection={"id": 1, "address": 1, "properties": 1, "_id": 0},
-            )
+        try:
+            docCount = await self.mongo.getDocumentCount(self.mongo.getDb(), "Devices")
+        except:
+            self.logger.error("Could not get a device doc count...")
+        else:
+            if docCount > 0:
+                dbPayload = await self.mongo.findDocuments(
+                    self.mongo.getDb(),
+                    "Devices",
+                    query={},
+                    projection={"id": 1, "address": 1, "properties": 1, "_id": 0},
+                )
 
-            try:
-                with open(self.og_fp, "wb") as object_graph:
-                    object_graph.flush()
-            except:  # noqa: E722
-                self.logger.critical("ERROR Unable to persist object graph to file...!")
-
-            for device in dbPayload:
                 try:
-                    deviceSpec = OrderedDict(
-                        {
-                            "name": device["properties"]["device-name"]["value"],
-                            "id": device["id"],
-                            "address": device["address"],
-                            "points": OrderedDict(),
-                        }
-                    )
-                    pointList = deviceSpec["points"]
-                    objListValue = device["properties"]["object-list"]["value"]
-
-                    # TODO - Add trend, schedule, and alarm objects to the object graph here.
-                    #        All object types filtered into 'objList' will be parsed into the
-                    #         object-graph for secondary services to derive data from.
-                    objList = list(
-                        filter(
-                            lambda kind: "analog-value" in kind
-                            or "analog-input" in kind  # noqa: W503
-                            or "analog-output" in kind  # noqa: W503
-                            or "binary-value" in kind  # noqa: W503
-                            or "binary-input" in kind  # noqa: W503
-                            or "binary-output" in kind  # noqa: W503
-                            or "multi-state-value" in kind  # noqa: W503
-                            or "multi-state-input" in kind  # noqa: W503
-                            or "multi-state-output" in kind,
-                            objListValue,  # noqa: W503
-                        )
-                    )
-
-                    self.object_graph[device["id"]] = {}
-
-                    for i, obj in enumerate(objList):
-                        self.object_graph[device["id"]][obj] = {
-                            "id": deviceSpec["id"],
-                            "name": deviceSpec["name"],
-                            "address": deviceSpec["address"],
-                            "point": obj,
-                        }
-                        if "analog" in str(obj):
-                            point = pt.AnalogPoint(
-                                self.app,
-                                self.localDevice,
-                                self.object_graph[device["id"]][obj],
-                                obj,
-                            )
-                            await point.build()
-                            pointList[str(point.obj)] = point.spec
-                        elif "binary" in str(obj):
-                            point = pt.BinaryPoint(
-                                self.app,
-                                self.localDevice,
-                                self.object_graph[device["id"]][obj],
-                                obj,
-                            )
-                            await point.build()
-                            pointList[str(point.obj)] = point.spec
-                        elif "multi-state" in str(obj):
-                            point = pt.MsvPoint(
-                                self.app,
-                                self.localDevice,
-                                self.object_graph[device["id"]][obj],
-                                obj,
-                            )
-                            await point.build()
-                            pointList[str(point.obj)] = point.spec
-                        else:
-                            point = pt.BacnetPoint(
-                                self.app,
-                                self.localDevice,
-                                self.object_graph[device["id"]][obj],
-                                obj,
-                            )
-                            await point.build()
-                            pointList[str(point.obj)] = point.spec
-
                     with open(self.og_fp, "wb") as object_graph:
-                        try:
-                            pickle.dump(self.object_graph, object_graph)
-                        except:  # noqa: E722
-                            self.logger.critical(
-                                f"ERROR Unable to append {deviceSpec['id']} object graph to file...!"
-                            )
-
+                        object_graph.flush()
                 except:  # noqa: E722
-                    self.logger.critical(
-                        f"ERROR object-list is not available in \
-                            {device['properties']['device-name']['value']}"
-                    )
+                    self.logger.critical("ERROR Unable to persist object graph to file...!")
 
-                self.deviceSpecs.append(deviceSpec)
+                for device in dbPayload:
+                    try:
+                        deviceSpec = OrderedDict(
+                            {
+                                "name": device["properties"]["device-name"]["value"],
+                                "id": device["id"],
+                                "address": device["address"],
+                                "points": OrderedDict(),
+                            }
+                        )
+                        pointList = deviceSpec["points"]
+                        objListValue = device["properties"]["object-list"]["value"]
+
+                        # TODO - Add trend, schedule, and alarm objects to the object graph here.
+                        #        All object types filtered into 'objList' will be parsed into the
+                        #         object-graph for secondary services to derive data from.
+                        objList = list(
+                            filter(
+                                lambda kind: "analog-value" in kind
+                                or "analog-input" in kind  # noqa: W503
+                                or "analog-output" in kind  # noqa: W503
+                                or "binary-value" in kind  # noqa: W503
+                                or "binary-input" in kind  # noqa: W503
+                                or "binary-output" in kind  # noqa: W503
+                                or "multi-state-value" in kind  # noqa: W503
+                                or "multi-state-input" in kind  # noqa: W503
+                                or "multi-state-output" in kind,
+                                objListValue,  # noqa: W503
+                            )
+                        )
+
+                        self.object_graph[device["id"]] = {}
+
+                        for i, obj in enumerate(objList):
+                            self.object_graph[device["id"]][obj] = {
+                                "id": deviceSpec["id"],
+                                "name": deviceSpec["name"],
+                                "address": deviceSpec["address"],
+                                "point": obj,
+                            }
+                            if "analog" in str(obj):
+                                point = pt.AnalogPoint(
+                                    self.app,
+                                    self.localDevice,
+                                    self.object_graph[device["id"]][obj],
+                                    obj,
+                                )
+                                await point.build()
+                                pointList[str(point.obj)] = point.spec
+                            elif "binary" in str(obj):
+                                point = pt.BinaryPoint(
+                                    self.app,
+                                    self.localDevice,
+                                    self.object_graph[device["id"]][obj],
+                                    obj,
+                                )
+                                await point.build()
+                                pointList[str(point.obj)] = point.spec
+                            elif "multi-state" in str(obj):
+                                point = pt.MsvPoint(
+                                    self.app,
+                                    self.localDevice,
+                                    self.object_graph[device["id"]][obj],
+                                    obj,
+                                )
+                                await point.build()
+                                pointList[str(point.obj)] = point.spec
+                            else:
+                                point = pt.BacnetPoint(
+                                    self.app,
+                                    self.localDevice,
+                                    self.object_graph[device["id"]][obj],
+                                    obj,
+                                )
+                                await point.build()
+                                pointList[str(point.obj)] = point.spec
+
+                        with open(self.og_fp, "wb") as object_graph:
+                            try:
+                                pickle.dump(self.object_graph, object_graph)
+                            except:  # noqa: E722
+                                self.logger.critical(
+                                    f"ERROR Unable to append {deviceSpec['id']} object graph to file...!"
+                                )
+
+                    except:  # noqa: E722
+                        self.logger.critical(
+                            f"ERROR object-list is not available in \
+                                {device['properties']['device-name']['value']}"
+                        )
+
+                    self.deviceSpecs.append(deviceSpec)
 
         self.logger.info("point discovery completed...")
 

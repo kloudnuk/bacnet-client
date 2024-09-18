@@ -90,8 +90,8 @@ async def log(q, mongo):
                 else:
                     print(m.group(0))
                     await mongo.writeDocument(mongo_record, mongo.getDb(), "Logs")
-        except Exception as e:
-            print(e)
+        except:
+            print("Logger error...")
         await asyncio.sleep(1)
 
 
