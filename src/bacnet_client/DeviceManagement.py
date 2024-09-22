@@ -108,23 +108,26 @@ class DeviceManager(Subscriber):
                 except AbortPDU as e:
                     self.logger.debug(f"{id} - {prop} - {e}")
                     if e.apduAbortRejectReason == AbortReason.segmentationNotSupported:
-                        if str(prop) == "object-list":
-                            object_list = []
-                            list_length = await self.app.read_property(
-                                iamDict[id], id, "object-list", array_index=0
-                            )
-                            for i in range(list_length):
-                                object_id: ObjectIdentifier = (
-                                    await self.app.read_property(
-                                        iamDict[id],
-                                        id,
-                                        "object-list",
-                                        array_index=i + 1,
-                                    )
+                        try:
+                            if str(prop) == "object-list":
+                                object_list = []
+                                list_length = await self.app.read_property(
+                                    iamDict[id], id, "object-list", array_index=0
                                 )
-                                object_list.append(object_id)
+                                for i in range(list_length):
+                                    object_id: ObjectIdentifier = (
+                                        await self.app.read_property(
+                                            iamDict[id],
+                                            id,
+                                            "object-list",
+                                            array_index=i + 1,
+                                        )
+                                    )
+                                    object_list.append(object_id)
 
-                            propDict["object-list"] = object_list
+                                propDict["object-list"] = object_list
+                        except:
+                            self.logger.error("Error inside the AbortPDU exception handler...")
                 except:
                     self.logger.error("Device discovery error...!")
 
